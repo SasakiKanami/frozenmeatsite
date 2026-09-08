@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Guest Checkout | J&R Frozen Goods</title>
+  <!-- Strictly external CSS -->
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+  <!-- Navigation Bar -->
+  <header class="navbar">
+    <div class="nav-container">
+      <div class="brand">
+        <span class="brand-title">J&R Frozen Goods</span>
+        <span class="brand-sub">Carni-Flow Guest Checkout</span>
+      </div>
+      <nav class="nav-links">
+        <a href="index.html" class="nav-link">← Back to Catalog</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container">
+    
+    <!-- Checkout Card -->
+    <section class="checkout-layout" id="checkout-card">
+      
+      <!-- Left Column: Basket Items -->
+      <div class="card-box">
+        <h2 class="box-title">Your Order Summary</h2>
+        <p class="box-sub">Review your meat cuts and packages.</p>
+        
+        <div id="cart-items-container" class="cart-items-list">
+          <!-- Dynamically populated by js/main.js -->
+        </div>
+
+        <div class="cart-total-bar">
+          <span>Total Amount:</span>
+          <strong id="cart-total-price" class="total-highlight">₱0.00</strong>
+        </div>
+      </div>
+
+      <!-- Right Column: Guest Information (No Sign-Up) -->
+      <div class="card-box">
+        <h2 class="box-title">Guest Details</h2>
+        <p class="box-sub">No account required. Please provide accurate details for pickup/dispatch.</p>
+
+        <form onsubmit="handleGuestCheckout(event)">
+          <div class="form-group">
+            <label for="guestName" class="form-label">Full Name *</label>
+            <input type="text" id="guestName" class="form-input" placeholder="Juan Dela Cruz" required>
+          </div>
+
+          <div class="form-group">
+            <label for="guestPhone" class="form-label">Mobile Phone Number *</label>
+            <input type="tel" id="guestPhone" class="form-input" placeholder="09XXXXXXXXX" required>
+          </div>
+
+          <div class="form-group">
+            <label for="fulfillmentType" class="form-label">Fulfillment Option *</label>
+            <select id="fulfillmentType" class="form-input" required>
+              <option value="Storefront Pickup">Storefront Pickup (Caloocan Branch)</option>
+              <option value="Same-Day Delivery">Same-Day Local Delivery</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="paymentMethod" class="form-label">Payment Preference *</label>
+            <select id="paymentMethod" class="form-input" required>
+              <option value="Cash upon Pickup/Delivery">Cash upon Pickup / Delivery</option>
+              <option value="GCash">GCash Payment</option>
+            </select>
+          </div>
+
+          <button type="submit" class="btn-submit">Confirm & Reserve Order</button>
+        </form>
+      </div>
+
+    </section>
+
+    <!-- Confirmation Receipt (Hidden by default, shown after checkout) -->
+    <section class="confirmation-box hidden" id="confirmation-card">
+      <div class="success-icon">✓</div>
+      <h2 class="conf-title">Order Reservation Placed!</h2>
+      <p class="conf-sub">Please save your order reference below. Our store staff will prepare your items based on available batch stock.</p>
+
+      <div class="receipt-details">
+        <div class="receipt-line"><span>Reference ID:</span> <strong id="conf-ref" class="ref-code">#CF-0000</strong></div>
+        <div class="receipt-line"><span>Customer:</span> <strong id="conf-name">---</strong></div>
+        <div class="receipt-line"><span>Contact:</span> <span id="conf-phone">---</span></div>
+        <div class="receipt-line"><span>Fulfillment:</span> <span id="conf-fulfillment">---</span></div>
+        <div class="receipt-line"><span>Payment:</span> <span id="conf-payment">---</span></div>
+        <div class="receipt-line total-line"><span>Total Due:</span> <strong id="conf-total">₱0.00</strong></div>
+      </div>
+
+      <div class="receipt-actions">
+        <a href="index.html" class="btn-primary">Return to Catalog</a>
+      </div>
+    </section>
+
+  </main>
+
+  <script src="js/main.js"></script>
+</body>
+</html>

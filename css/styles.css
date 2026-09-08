@@ -1,17 +1,18 @@
 /* --- Root Variables & Theme Colors --- */
 :root {
-    --primary-color: #8b0000; /* Meat Deep Red matching project theme */
+    --primary-color: #8b0000;
     --primary-hover: #6a0000;
     --accent-color: #d9534f;
-    --bg-light: #fdfaf8;
+    --bg-light: #fbf8f5;
     --surface-white: #ffffff;
-    --text-dark: #2c2c2c;
+    --text-dark: #232323;
     --text-muted: #666666;
-    --border-color: #e2dcd7;
-    --font-stack: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    --border-color: #e4ded9;
+    --success-color: #2e7d32;
+    --font-stack: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 }
 
-/* --- Global Resets --- */
+/* --- Resets --- */
 * {
     box-sizing: border-box;
     margin: 0;
@@ -25,7 +26,7 @@ body {
     line-height: 1.6;
 }
 
-/* --- Header & Navigation --- */
+/* --- Navbar --- */
 .navbar {
     background-color: var(--primary-color);
     color: #ffffff;
@@ -33,7 +34,6 @@ body {
     position: sticky;
     top: 0;
     z-index: 100;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
 .nav-container {
@@ -44,15 +44,10 @@ body {
     align-items: center;
 }
 
-.brand {
-    display: flex;
-    flex-direction: column;
-}
-
 .brand-title {
     font-size: 1.25rem;
     font-weight: 700;
-    letter-spacing: 0.5px;
+    display: block;
 }
 
 .brand-sub {
@@ -62,7 +57,8 @@ body {
 
 .nav-links {
     display: flex;
-    gap: 1.5rem;
+    align-items: center;
+    gap: 1.25rem;
 }
 
 .nav-link {
@@ -70,56 +66,52 @@ body {
     text-decoration: none;
     font-weight: 500;
     font-size: 0.95rem;
-    transition: opacity 0.2s ease;
 }
 
-    .nav-link:hover {
-        opacity: 0.8;
-    }
+.cart-btn {
+    background-color: rgba(255, 255, 255, 0.2);
+    padding: 0.4rem 0.8rem;
+    border-radius: 4px;
+}
 
 /* --- Hero Banner --- */
 .hero {
-    background: linear-gradient(rgba(139, 0, 0, 0.9), rgba(106, 0, 0, 0.9));
+    background: linear-gradient(rgba(139, 0, 0, 0.92), rgba(106, 0, 0, 0.95));
     color: #ffffff;
     text-align: center;
-    padding: 4rem 1.5rem;
+    padding: 3.5rem 1.5rem;
 }
 
 .hero-content {
-    max-width: 750px;
+    max-width: 700px;
     margin: 0 auto;
 }
 
 .hero-title {
     font-size: 2.2rem;
-    margin-bottom: 1rem;
+    margin-bottom: 0.75rem;
 }
 
 .hero-desc {
-    font-size: 1.1rem;
-    margin-bottom: 1.75rem;
-    opacity: 0.95;
+    font-size: 1.05rem;
+    margin-bottom: 1.5rem;
+    opacity: 0.9;
 }
 
 .btn-primary {
     display: inline-block;
     background-color: #ffffff;
     color: var(--primary-color);
-    padding: 0.75rem 1.75rem;
+    padding: 0.75rem 1.5rem;
     border-radius: 4px;
     text-decoration: none;
     font-weight: 700;
-    transition: background-color 0.2s ease;
 }
 
-    .btn-primary:hover {
-        background-color: #f1f1f1;
-    }
-
-/* --- Catalog Grid --- */
+/* --- Container & Grid --- */
 .container {
     max-width: 1100px;
-    margin: 3rem auto;
+    margin: 2.5rem auto;
     padding: 0 1.5rem;
 }
 
@@ -127,7 +119,6 @@ body {
     text-align: center;
     font-size: 1.8rem;
     margin-bottom: 2rem;
-    color: var(--text-dark);
 }
 
 .product-grid {
@@ -143,14 +134,12 @@ body {
     padding: 1.5rem;
     display: flex;
     flex-direction: column;
-    position: relative;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.03);
 }
 
 .badge {
     align-self: flex-start;
     background-color: #e8f5e9;
-    color: #2e7d32;
+    color: var(--success-color);
     font-size: 0.75rem;
     font-weight: 600;
     padding: 0.25rem 0.5rem;
@@ -190,7 +179,6 @@ body {
     border-radius: 4px;
     cursor: pointer;
     font-weight: 600;
-    transition: all 0.2s ease;
 }
 
     .btn-secondary:hover {
@@ -198,43 +186,118 @@ body {
         color: #ffffff;
     }
 
-/* --- Customer Order Form --- */
-.order-section {
-    background-color: #f3eee9;
-    padding: 3.5rem 1.5rem;
+/* --- Checkout Layout (order.html) --- */
+.checkout-layout {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
 }
 
-.form-wrapper {
-    max-width: 600px;
-    margin: 0 auto;
+@media (max-width: 768px) {
+    .checkout-layout {
+        grid-template-columns: 1fr;
+    }
+}
+
+.card-box {
     background: var(--surface-white);
-    padding: 2.5rem;
+    border: 1px solid var(--border-color);
     border-radius: 8px;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+    padding: 2rem;
 }
 
-.form-title {
-    font-size: 1.6rem;
-    margin-bottom: 0.5rem;
-    text-align: center;
+.box-title {
+    font-size: 1.4rem;
+    margin-bottom: 0.25rem;
 }
 
-.form-subtitle {
-    font-size: 0.9rem;
+.box-sub {
+    font-size: 0.85rem;
     color: var(--text-muted);
-    text-align: center;
-    margin-bottom: 2rem;
+    margin-bottom: 1.5rem;
 }
 
+/* --- Cart Summary Rows --- */
+.cart-items-list {
+    min-height: 150px;
+}
+
+.empty-cart-msg {
+    color: var(--text-muted);
+    font-style: italic;
+    padding: 1.5rem 0;
+}
+
+.summary-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 0;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.summary-item-name {
+    display: block;
+    font-weight: 600;
+    font-size: 0.95rem;
+}
+
+.summary-item-rate {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+
+.summary-qty-controls {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.btn-qty {
+    width: 28px;
+    height: 28px;
+    background-color: #eeeeee;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+.summary-qty {
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+.summary-subtotal {
+    font-weight: bold;
+    color: var(--primary-color);
+    font-size: 0.95rem;
+}
+
+.cart-total-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 1.2rem;
+    margin-top: 1.5rem;
+    padding-top: 1rem;
+    border-top: 2px solid var(--text-dark);
+}
+
+.total-highlight {
+    color: var(--primary-color);
+}
+
+/* --- Guest Form Controls --- */
 .form-group {
     margin-bottom: 1.25rem;
 }
 
 .form-label {
     display: block;
-    font-size: 0.9rem;
+    font-size: 0.85rem;
     font-weight: 600;
-    margin-bottom: 0.5rem;
+    margin-bottom: 0.4rem;
 }
 
 .form-input {
@@ -242,8 +305,8 @@ body {
     padding: 0.75rem;
     border: 1px solid var(--border-color);
     border-radius: 4px;
-    font-size: 0.95rem;
     font-family: inherit;
+    font-size: 0.95rem;
 }
 
     .form-input:focus {
@@ -261,18 +324,83 @@ body {
     font-weight: bold;
     border-radius: 4px;
     cursor: pointer;
-    transition: background-color 0.2s ease;
 }
 
     .btn-submit:hover {
         background-color: var(--primary-hover);
     }
 
+/* --- Confirmation Screen --- */
+.confirmation-box {
+    background: var(--surface-white);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    max-width: 600px;
+    margin: 0 auto;
+    padding: 3rem 2rem;
+    text-align: center;
+}
+
+.success-icon {
+    width: 60px;
+    height: 60px;
+    background-color: #e8f5e9;
+    color: var(--success-color);
+    font-size: 2rem;
+    line-height: 60px;
+    border-radius: 50%;
+    margin: 0 auto 1.5rem auto;
+}
+
+.conf-title {
+    font-size: 1.7rem;
+    margin-bottom: 0.5rem;
+}
+
+.conf-sub {
+    color: var(--text-muted);
+    margin-bottom: 2rem;
+    font-size: 0.95rem;
+}
+
+.receipt-details {
+    background-color: #fafafa;
+    border: 1px dashed var(--border-color);
+    border-radius: 6px;
+    padding: 1.5rem;
+    text-align: left;
+    margin-bottom: 2rem;
+}
+
+.receipt-line {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.4rem 0;
+    font-size: 0.95rem;
+}
+
+.ref-code {
+    color: var(--primary-color);
+    font-size: 1.1rem;
+}
+
+.total-line {
+    border-top: 1px solid var(--border-color);
+    margin-top: 0.5rem;
+    padding-top: 0.75rem;
+    font-size: 1.15rem;
+}
+
+.hidden {
+    display: none !important;
+}
+
 /* --- Footer --- */
 .footer {
     background-color: #212121;
-    color: #cccccc;
+    color: #aaaaaa;
     text-align: center;
     padding: 1.5rem;
     font-size: 0.85rem;
+    margin-top: 3rem;
 }
