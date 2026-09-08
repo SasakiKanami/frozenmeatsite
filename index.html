@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>J&R Frozen Goods | Carni-Flow Storefront</title>
+  <!-- Purely external CSS -->
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+  <!-- Top Navigation -->
+  <header class="navbar">
+    <div class="nav-container">
+      <div class="brand">
+        <span class="brand-title">J&R Frozen Goods</span>
+        <span class="brand-sub">Powered by Carni-Flow</span>
+      </div>
+      <nav class="nav-links">
+        <a href="#catalog" class="nav-link">Catalog</a>
+        <a href="#order" class="nav-link">Order Form</a>
+        <a href="#about" class="nav-link">Store Info</a>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Hero Section -->
+  <section class="hero">
+    <div class="hero-content">
+      <h1 class="hero-title">Fresh & Quality Frozen Meat in Caloocan</h1>
+      <p class="hero-desc">Skip the Facebook DM queue. Reserve your frozen meat packages and processed goods online for fast storefront pickup or delivery.</p>
+      <a href="#order" class="btn-primary">Place an Order</a>
+    </div>
+  </section>
+
+  <!-- Product Catalog Section -->
+  <main class="container" id="catalog">
+    <h2 class="section-title">Available Products</h2>
+    <div class="product-grid">
+
+      <!-- Product Card 1 -->
+      <article class="product-card">
+        <div class="badge">Fresh Cut</div>
+        <h3 class="product-name">Pork Liempo Cut</h3>
+        <p class="product-category">Pork Category</p>
+        <p class="product-price">₱250.00 / kg</p>
+        <button class="btn-secondary" type="button">Select Item</button>
+      </article>
+
+      <!-- Product Card 2 -->
+      <article class="product-card">
+        <div class="badge">Fresh Cut</div>
+        <h3 class="product-name">Chicken Breast Fillet</h3>
+        <p class="product-category">Poultry Category</p>
+        <p class="product-price">₱210.00 / kg</p>
+        <button class="btn-secondary" type="button">Select Item</button>
+      </article>
+
+      <!-- Product Card 3 -->
+      <article class="product-card">
+        <div class="badge processed">Processed</div>
+        <h3 class="product-name">Tender Juicy Hotdog</h3>
+        <p class="product-category">Processed Foods</p>
+        <p class="product-price">₱200.00 / pack</p>
+        <button class="btn-secondary" type="button">Select Item</button>
+      </article>
+
+      <!-- Product Card 4 -->
+      <article class="product-card">
+        <div class="badge processed">Processed</div>
+        <h3 class="product-name">Young Pork Tocino</h3>
+        <p class="product-category">Processed Foods</p>
+        <p class="product-price">₱75.00 / pack</p>
+        <button class="btn-secondary" type="button">Select Item</button>
+      </article>
+
+    </div>
+  </main>
+
+  <!-- Customer Online Order / Reservation Form -->
+  <section class="order-section" id="order">
+    <div class="form-wrapper">
+      <h2 class="form-title">Customer Order & Reservation</h2>
+      <p class="form-subtitle">Fill in your details to reserve stock from our current inventory batch.</p>
+
+      <form class="order-form" action="#" method="POST">
+        <div class="form-group">
+          <label for="fullName" class="form-label">Full Name</label>
+          <input type="text" id="fullName" name="fullName" class="form-input" placeholder="e.g., Maria Santos" required>
+        </div>
+
+        <div class="form-group">
+          <label for="contactNumber" class="form-label">Contact / Phone Number</label>
+          <input type="tel" id="contactNumber" name="contactNumber" class="form-input" placeholder="e.g., 09171234567" required>
+        </div>
+
+        <div class="form-group">
+          <label for="orderType" class="form-label">Fulfillment Method</label>
+          <select id="orderType" name="orderType" class="form-input" required>
+            <option value="pickup">Storefront Pick-up (Sangandaan, Caloocan)</option>
+            <option value="delivery">Local Area Delivery</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="orderItems" class="form-label">Items & Quantities</label>
+          <textarea id="orderItems" name="orderItems" rows="4" class="form-input" placeholder="Example:&#10;- 2kg Pork Liempo Cut&#10;- 1 pack Tender Juicy Hotdog" required></textarea>
+        </div>
+
+        <button type="submit" class="btn-submit">Submit Order to Carni-Flow</button>
+      </form>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="footer" id="about">
+    <p class="footer-text">J&R Frozen Goods • Sangandaan, Caloocan City • Open for Daily Retail & Bulk Orders</p>
+  </footer>
+
+</body>
+</html>
