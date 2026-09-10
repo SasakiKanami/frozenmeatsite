@@ -1,107 +1,120 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Guest Checkout | J&R Frozen Goods</title>
-  <!-- Strictly external CSS -->
-  <link rel="stylesheet" href="css/styles.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reserve Checkout | J&R Frozen Goods</title>
+    <!-- Purely external CSS -->
+    <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
 
-  <!-- Navigation Bar -->
-  <header class="navbar">
-    <div class="nav-container">
-      <div class="brand">
-        <span class="brand-title">J&R Frozen Goods</span>
-        <span class="brand-sub">Carni-Flow Guest Checkout</span>
-      </div>
-      <nav class="nav-links">
-        <a href="index.html" class="nav-link">← Back to Catalog</a>
-      </nav>
-    </div>
-  </header>
-
-  <main class="container">
-    
-    <!-- Checkout Card -->
-    <section class="checkout-layout" id="checkout-card">
-      
-      <!-- Left Column: Basket Items -->
-      <div class="card-box">
-        <h2 class="box-title">Your Order Summary</h2>
-        <p class="box-sub">Review your meat cuts and packages.</p>
-        
-        <div id="cart-items-container" class="cart-items-list">
-          <!-- Dynamically populated by js/main.js -->
+    <!-- Chilled Navigation -->
+    <header class="navbar">
+        <div class="nav-container">
+            <div class="brand">
+                <span class="brand-title">J&R Frozen Goods</span>
+                <span class="brand-sub">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12 2v20M2 12h20M4.93 4.93l14.14 14.14M4.93 19.07L19.07 4.93" />
+                    </svg>
+                    Carni-Flow Cold Storage
+                </span>
+            </div>
+            <nav class="nav-links">
+                <a href="index.html" class="nav-link">← Back to Meat Catalog</a>
+            </nav>
         </div>
+    </header>
 
-        <div class="cart-total-bar">
-          <span>Total Amount:</span>
-          <strong id="cart-total-price" class="total-highlight">₱0.00</strong>
-        </div>
-      </div>
+    <main class="container">
 
-      <!-- Right Column: Guest Information (No Sign-Up) -->
-      <div class="card-box">
-        <h2 class="box-title">Guest Details</h2>
-        <p class="box-sub">No account required. Please provide accurate details for pickup/dispatch.</p>
+        <!-- Frosted Glass Two-Column Layout -->
+        <section class="checkout-layout" id="checkout-card">
 
-        <form onsubmit="handleGuestCheckout(event)">
-          <div class="form-group">
-            <label for="guestName" class="form-label">Full Name *</label>
-            <input type="text" id="guestName" class="form-input" placeholder="Juan Dela Cruz" required>
-          </div>
+            <!-- Left Box: Basket Summary -->
+            <div class="frost-panel">
+                <h2 class="card-heading">Your Cold Reserve Basket</h2>
+                <p class="card-sub">Reserved directly from live freezer inventory.</p>
 
-          <div class="form-group">
-            <label for="guestPhone" class="form-label">Mobile Phone Number *</label>
-            <input type="tel" id="guestPhone" class="form-input" placeholder="09XXXXXXXXX" required>
-          </div>
+                <div id="cart-items-container" class="cart-items-list">
+                    <!-- Populated by main.js -->
+                </div>
 
-          <div class="form-group">
-            <label for="fulfillmentType" class="form-label">Fulfillment Option *</label>
-            <select id="fulfillmentType" class="form-input" required>
-              <option value="Storefront Pickup">Storefront Pickup (Caloocan Branch)</option>
-              <option value="Same-Day Delivery">Same-Day Local Delivery</option>
-            </select>
-          </div>
+                <div class="cart-total-bar">
+                    <span>Estimated Total:</span>
+                    <strong id="cart-total-price" class="total-highlight">₱0.00</strong>
+                </div>
+            </div>
 
-          <div class="form-group">
-            <label for="paymentMethod" class="form-label">Payment Preference *</label>
-            <select id="paymentMethod" class="form-input" required>
-              <option value="Cash upon Pickup/Delivery">Cash upon Pickup / Delivery</option>
-              <option value="GCash">GCash Payment</option>
-            </select>
-          </div>
+            <!-- Right Box: Guest Information -->
+            <div class="frost-panel">
+                <h2 class="card-heading">Customer Information</h2>
+                <p class="card-sub">Fast guest order. No account registration needed.</p>
 
-          <button type="submit" class="btn-submit">Confirm & Reserve Order</button>
-        </form>
-      </div>
+                <form onsubmit="handleGuestCheckout(event)">
+                    <div class="form-group">
+                        <label for="guestName" class="form-label">Full Name *</label>
+                        <input type="text" id="guestName" class="form-input" placeholder="e.g., Juan Dela Cruz" required>
+                    </div>
 
-    </section>
+                    <div class="form-group">
+                        <label for="guestPhone" class="form-label">Mobile Contact Number *</label>
+                        <input type="tel" id="guestPhone" class="form-input" placeholder="09XXXXXXXXX" required>
+                    </div>
 
-    <!-- Confirmation Receipt (Hidden by default, shown after checkout) -->
-    <section class="confirmation-box hidden" id="confirmation-card">
-      <div class="success-icon">✓</div>
-      <h2 class="conf-title">Order Reservation Placed!</h2>
-      <p class="conf-sub">Please save your order reference below. Our store staff will prepare your items based on available batch stock.</p>
+                    <div class="form-group">
+                        <label for="fulfillmentType" class="form-label">Fulfillment Method *</label>
+                        <select id="fulfillmentType" class="form-input" required>
+                            <option value="Storefront Pickup">Storefront Pickup (Sangandaan, Caloocan)</option>
+                            <option value="Same-Day Delivery">Same-Day Local Area Delivery</option>
+                        </select>
+                    </div>
 
-      <div class="receipt-details">
-        <div class="receipt-line"><span>Reference ID:</span> <strong id="conf-ref" class="ref-code">#CF-0000</strong></div>
-        <div class="receipt-line"><span>Customer:</span> <strong id="conf-name">---</strong></div>
-        <div class="receipt-line"><span>Contact:</span> <span id="conf-phone">---</span></div>
-        <div class="receipt-line"><span>Fulfillment:</span> <span id="conf-fulfillment">---</span></div>
-        <div class="receipt-line"><span>Payment:</span> <span id="conf-payment">---</span></div>
-        <div class="receipt-line total-line"><span>Total Due:</span> <strong id="conf-total">₱0.00</strong></div>
-      </div>
+                    <div class="form-group">
+                        <label for="paymentMethod" class="form-label">Payment Preference *</label>
+                        <select id="paymentMethod" class="form-input" required>
+                            <option value="Cash on Pickup / Delivery">Cash on Pickup / Delivery</option>
+                            <option value="GCash Transfer">GCash Transfer</option>
+                        </select>
+                    </div>
 
-      <div class="receipt-actions">
-        <a href="index.html" class="btn-primary">Return to Catalog</a>
-      </div>
-    </section>
+                    <button type="submit" class="btn-submit-order">Confirm Cold Reserve</button>
+                </form>
+            </div>
 
-  </main>
+        </section>
 
-  <script src="js/main.js"></script>
+        <!-- Confirmation Receipt (Shown after checkout) -->
+        <section class="confirmation-box hidden" id="confirmation-card">
+            <div class="freeze-icon-wrap">
+                <svg class="icon-svg" viewBox="0 0 24 24">
+                    <path d="M12 2v20M2 12h20M4.93 4.93l14.14 14.14M4.93 19.07L19.07 4.93" />
+                </svg>
+            </div>
+            <h2 class="conf-title">Reservation Placed in Cold Storage!</h2>
+            <p class="conf-sub">Your items are logged in our FIFO queue. Present your Reference ID at the store or when receiving delivery.</p>
+
+            <div class="receipt-details">
+                <div class="receipt-line"><span>Reference ID:</span> <strong id="conf-ref" class="ref-code">#CF-0000</strong></div>
+                <div class="receipt-line"><span>Customer:</span> <strong id="conf-name">---</strong></div>
+                <div class="receipt-line"><span>Contact:</span> <span id="conf-phone">---</span></div>
+                <div class="receipt-line"><span>Fulfillment:</span> <span id="conf-fulfillment">---</span></div>
+                <div class="receipt-line"><span>Payment:</span> <span id="conf-payment">---</span></div>
+                <div class="receipt-line total-line"><span>Total Due:</span> <strong id="conf-total">₱0.00</strong></div>
+            </div>
+
+            <div class="receipt-actions">
+                <a href="index.html" class="btn-ice">Return to Cold Catalog</a>
+            </div>
+        </section>
+
+    </main>
+
+    <footer class="footer">
+        <p>J&R Frozen Goods • Sangandaan, Caloocan City • Carni-Flow System Integration Architecture</p>
+    </footer>
+
+    <script src="js/main.js"></script>
 </body>
 </html>
