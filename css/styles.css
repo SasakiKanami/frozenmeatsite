@@ -1,3 +1,4 @@
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,100..900;1,100..900&display=swap');
 /* ==========================================================================
    CARNI-FLOW: FROST & COLD STORAGE SUITE
    100% External CSS - Strictly No Inline or Internal Styles
@@ -13,8 +14,8 @@
     --ice-cyan: #38bdf8;
     --ice-glacier-blue: #0284c7;
     /* Frost Whites & Crystal Glass Surfaces */
-    --frost-bg-top: #f0f7fd;
-    --frost-bg-bottom: #e1effa;
+    --frost-bg-top: #d0e9ff;
+    --frost-bg-bottom: #bae1ff;
     --glass-surface: rgba(255, 255, 255, 0.75);
     --glass-border: rgba(255, 255, 255, 0.9);
     --glass-border-ice: rgba(186, 230, 253, 0.55);
@@ -34,7 +35,7 @@
     /* Typography & General */
     --text-main: #0c203b;
     --text-muted: #536b85;
-    --font-stack: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --font-stack: "Montserrat", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 }
 
 /* Global Reset */
@@ -118,11 +119,12 @@ body {
     }
 
 .cart-pill {
+    text-decoration: none;
     background: rgba(56, 189, 248, 0.12);
     border: 1px solid var(--ice-cyan);
     color: #ffffff;
     padding: 0.45rem 1.1rem;
-    border-radius: 50px;
+    border-radius: 7px;
     font-weight: 700;
     display: flex;
     align-items: center;
