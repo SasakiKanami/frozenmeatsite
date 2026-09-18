@@ -28,7 +28,7 @@ function updateCartBadge() {
     const badge = document.getElementById('cart-count');
     if (badge) {
         const totalCount = cart.reduce((sum, item) => sum + item.qty, 0);
-        badge.textContent = totalCount;
+        badge.textContent = totalCount > 9 ? '9+' : totalCount;
     }
 }
 
@@ -42,7 +42,7 @@ function renderOrderSummary() {
     summaryContainer.innerHTML = '';
 
     if (cart.length === 0) {
-        summaryContainer.innerHTML = '<p class="empty-cart-msg">Your basket is empty. Browse the catalog to add fresh meat!</p>';
+        summaryContainer.innerHTML = '<p class="empty-cart-msg">Your basket is empty. Browse the catalog to add stuff to your basket!</p>';
         totalPriceElem.textContent = '₱0.00';
         return;
     }
