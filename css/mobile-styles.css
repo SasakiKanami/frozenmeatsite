@@ -142,6 +142,28 @@ body {
         transform: translateY(-1px);
     }
 
+.catalog-pill {
+    text-decoration: none;
+    width: auto;
+    max-width: 80px;
+    justify-content: center;
+    background: rgba(56, 189, 248, 0.12);
+    border: 1px solid var(--ice-cyan);
+    color: #ffffff;
+    padding: 0.45rem 0.4rem;
+    border-radius: 7px;
+    font-weight: 700;
+    box-shadow: 0 0 14px rgba(56, 189, 248, 0.2);
+    transition: all 0.25s ease;
+}
+
+    .catalog-pill:hover {
+        background: var(--ice-cyan);
+        color: var(--navy-deep);
+        box-shadow: 0 0 20px rgba(56, 189, 248, 0.6);
+        transform: translateY(-1px);
+    }
+
 /* --- Hero Section with Breath Fog & Snowflakes --- */
 .hero {
     position: relative;
@@ -750,18 +772,11 @@ body {
 }
 
 
-/* .footer {
-    background: var(--navy-deep);
-    position: fixed;
-    left: 0;
-    bottom: 0;
-    width: 100%;
-    color: #7b94ad;
-    text-align: center;
-    padding: 2.2rem 1.5rem;
-    font-size: 0.85rem;
-    border-top: 1px solid rgba(56, 189, 248, 0.15);
-} */
+/*HIDING STUFF HERE */
+
+.hide-text {
+    display: none;
+}
 
 .footer {
     background: var(--navy-deep);
