@@ -51,8 +51,14 @@ body {
     color: var(--text-main);
     line-height: 1.6;
     min-height: 100vh;
+    display: flex;
+    flex-direction: column;
     position: relative;
     overflow-x: hidden;
+}
+
+main {
+    flex: 1;
 }
 
 /* --- Chilled Navigation Bar --- */
@@ -793,6 +799,7 @@ body {
     background: var(--navy-deep);
     color: #7b94ad;
     text-align: center;
+    bottom: 0;
     padding: 1rem 1.5rem;
     font-size: 0.75rem;
     border-top: 1px solid rgba(56, 189, 248, 0.15);
