@@ -1,0 +1,475 @@
+/* ==========================================================================
+   CARNI-FLOW: ADMIN CONTROL PANEL
+   Extends the Arctic / Frost & Cold Storage design tokens from styles.css
+   ========================================================================== */
+
+/* --- Compact Admin Header (replaces the customer hero) --- */
+.admin-header {
+    position: relative;
+    background: radial-gradient(circle at 30% 20%, #16365c 0%, #0c203b 55%, #071322 100%);
+    color: #ffffff;
+    padding: 2.6rem 1.5rem 2.8rem;
+    border-bottom: 1px solid rgba(186, 230, 253, 0.2);
+    overflow: hidden;
+}
+
+.admin-header-inner {
+    max-width: 1120px;
+    margin: 0 auto;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+    position: relative;
+    z-index: 2;
+}
+
+.admin-eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    background: rgba(56, 189, 248, 0.12);
+    border: 1px solid rgba(165, 243, 252, 0.5);
+    color: var(--ice-frost);
+    font-size: 0.72rem;
+    font-weight: 700;
+    padding: 0.32rem 0.9rem;
+    border-radius: 50px;
+    margin-bottom: 0.9rem;
+    letter-spacing: 0.6px;
+    text-transform: uppercase;
+}
+
+.admin-title {
+    font-size: 2.1rem;
+    font-weight: 900;
+    letter-spacing: -0.5px;
+    background: linear-gradient(180deg, #ffffff 45%, #a5f3fc 100%);
+    background-clip: text;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: 0.4rem;
+}
+
+.admin-desc {
+    color: #cbd5e1;
+    font-size: 0.95rem;
+    max-width: 480px;
+}
+
+.admin-clock {
+    text-align: right;
+    color: var(--ice-frost);
+}
+
+.admin-clock-time {
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: #ffffff;
+    letter-spacing: 0.5px;
+}
+
+.admin-clock-date {
+    font-size: 0.8rem;
+    letter-spacing: 0.4px;
+}
+
+.divider {
+  color: rgba(255, 255, 255, 0.3);
+  margin: 0 12px;
+}
+
+/* --- Stat Cards --- */
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 1.4rem;
+    margin-bottom: 2.6rem;
+}
+
+.stat-card {
+    background: var(--glass-surface);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border: 1px solid var(--glass-border);
+    border-radius: 12px;
+    padding: 1.5rem 1.6rem;
+    box-shadow: var(--glass-shadow), var(--glass-inner-sheen);
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    position: relative;
+    overflow: hidden;
+}
+
+    .stat-card::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 45%;
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.5) 0%, rgba(255, 255, 255, 0) 100%);
+        pointer-events: none;
+    }
+
+.stat-icon-wrap {
+    width: 46px;
+    height: 46px;
+    min-width: 46px;
+    border-radius: 10px;
+    background: rgba(224, 242, 254, 0.85);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.stat-icon-wrap svg {
+    width: 22px;
+    height: 22px;
+    stroke: var(--ice-glacier-blue);
+}
+
+.stat-card.alert .stat-icon-wrap {
+    background: var(--deep-freeze-bg);
+    box-shadow: var(--deep-freeze-glow);
+}
+
+.stat-card.alert .stat-icon-wrap svg {
+    stroke: var(--deep-freeze-text);
+}
+
+.stat-value {
+    font-size: 1.55rem;
+    font-weight: 900;
+    color: var(--navy-deep);
+    letter-spacing: -0.4px;
+    line-height: 1.1;
+}
+
+.stat-label {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    font-weight: 600;
+    letter-spacing: 0.2px;
+}
+
+/* --- Low Stock Banner --- */
+.low-stock-banner {
+    background: var(--deep-freeze-bg);
+    border: 1px solid var(--deep-freeze-border);
+    border-radius: 12px;
+    padding: 1.3rem 1.6rem;
+    margin-bottom: 2.6rem;
+    box-shadow: var(--deep-freeze-glow);
+    color: var(--deep-freeze-text);
+}
+
+.low-stock-banner-title {
+    font-weight: 800;
+    font-size: 0.95rem;
+    margin-bottom: 0.6rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.low-stock-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+}
+
+.low-stock-chip {
+    background: rgba(224, 242, 254, 0.12);
+    border: 1px solid rgba(224, 242, 254, 0.4);
+    padding: 0.35rem 0.8rem;
+    border-radius: 50px;
+    font-size: 0.8rem;
+    font-weight: 700;
+}
+
+/* --- Tab Navigation --- */
+.admin-tabs {
+    display: flex;
+    gap: 0.6rem;
+    margin-bottom: 1.6rem;
+    border-bottom: 1px solid rgba(186, 230, 253, 0.6);
+}
+
+.admin-tab {
+    background: none;
+    border: none;
+    font-family: inherit;
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--text-muted);
+    padding: 0.85rem 0.4rem;
+    cursor: pointer;
+    position: relative;
+    letter-spacing: 0.2px;
+    transition: color 0.2s ease;
+}
+
+    .admin-tab:hover {
+        color: var(--navy-deep);
+    }
+
+    .admin-tab.active {
+        color: var(--ice-glacier-blue);
+    }
+
+        .admin-tab.active::after {
+            content: "";
+            position: absolute;
+            left: 0;
+            right: 0;
+            bottom: -1px;
+            height: 3px;
+            border-radius: 3px 3px 0 0;
+            background: linear-gradient(90deg, var(--ice-cyan), var(--ice-glacier-blue));
+        }
+
+.admin-tab-panel {
+    display: none;
+}
+
+    .admin-tab-panel.active {
+        display: block;
+    }
+
+/* --- Panel Wrapper (table container) --- */
+.admin-panel {
+    background: var(--glass-surface);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border: 1px solid var(--glass-border);
+    border-radius: 12px;
+    padding: 1.8rem;
+    box-shadow: var(--glass-shadow), var(--glass-inner-sheen);
+    margin-bottom: 2.5rem;
+}
+
+.admin-panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.8rem;
+    margin-bottom: 1.5rem;
+}
+
+.admin-panel-title {
+    font-size: 1.15rem;
+    font-weight: 800;
+    color: var(--navy-deep);
+}
+
+.admin-panel-sub {
+    font-size: 0.82rem;
+    color: var(--text-muted);
+}
+
+.btn-reset {
+    background: rgba(255, 255, 255, 0.85);
+    border: 1px solid var(--glass-border-ice);
+    color: var(--text-muted);
+    padding: 0.5rem 0.95rem;
+    border-radius: 7px;
+    font-family: inherit;
+    font-weight: 700;
+    font-size: 0.82rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+    .btn-reset:hover {
+        border-color: #f87171;
+        color: #dc2626;
+    }
+
+    /* --- Add Items Form --- */
+    .form-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 1.2rem;
+        margin-bottom: 1.2rem;
+    }
+
+    .form-grid .form-group {
+        margin-bottom: 0;
+    }
+
+    .form-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 0.8rem;
+        margin-top: 1.5rem;
+    }
+
+    .form-actions .btn-reset,
+    .form-actions .btn-restock {
+        font-family: inherit;
+        cursor: pointer;
+    }
+
+    .btn-restock {
+        background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        border-radius: 7px;
+        color: #ffffff;
+        padding: 0.5rem 0.95rem;
+        font-size: 0.82rem;
+        font-weight: 700;
+        transition: all 0.2s ease;
+    }
+
+    .btn-restock:hover {
+        background: linear-gradient(135deg, #38bdf8 0%, #0284c7 100%);
+        box-shadow: 0 4px 12px rgba(2, 132, 199, 0.3);
+        transform: translateY(-1px);
+    }
+
+/* --- Data Table --- */
+.table-scroll {
+    overflow-x: auto;
+}
+
+.admin-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+}
+
+    .admin-table th {
+        text-align: left;
+        font-size: 0.72rem;
+        text-transform: uppercase;
+        letter-spacing: 0.6px;
+        color: var(--text-muted);
+        font-weight: 700;
+        padding: 0.6rem 0.7rem;
+        border-bottom: 2px solid rgba(186, 230, 253, 0.8);
+        white-space: nowrap;
+    }
+
+    .admin-table td {
+        padding: 0.85rem 0.7rem;
+        border-bottom: 1px solid rgba(186, 230, 253, 0.5);
+        color: var(--navy-deep);
+        vertical-align: middle;
+    }
+
+    /* .admin-table tr:last-child td {
+        border-bottom: none;
+    } */
+
+.cell-product-name {
+    font-weight: 700;
+}
+
+.cell-product-cat {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+}
+
+/* Stock status pills, reusing badge color logic from the storefront */
+.stock-pill {
+    font-size: 0.72rem;
+    font-weight: 700;
+    padding: 0.3rem 0.65rem;
+    border-radius: 6px;
+    letter-spacing: 0.3px;
+    display: inline-block;
+}
+
+.stock-pill.in-stock {
+    background-color: var(--fresh-chilled-bg);
+    color: var(--fresh-chilled-text);
+    border: 1px solid var(--fresh-chilled-border);
+}
+
+.stock-pill.low-stock {
+    background-color: var(--deep-freeze-bg);
+    color: var(--deep-freeze-text);
+    border: 1px solid var(--deep-freeze-border);
+}
+
+.stock-pill.out-stock {
+    background-color: var(--proc-bg);
+    color: #dc2626;
+    border: 1px solid #fca5a5;
+}
+
+.stock-adjust {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.stock-qty-value {
+    min-width: 46px;
+    text-align: center;
+    font-weight: 800;
+}
+
+.btn-restock {
+    background: rgba(255, 255, 255, 0.85);
+    border: 1px solid var(--glass-border-ice);
+    color: var(--navy-deep);
+    padding: 0.4rem 0.75rem;
+    border-radius: 7px;
+    cursor: pointer;
+    font-weight: 700;
+    font-size: 0.78rem;
+    white-space: nowrap;
+    transition: all 0.2s ease;
+}
+
+    .btn-restock:hover {
+        background: var(--ice-glacier-blue);
+        border-color: var(--ice-glacier-blue);
+        color: #ffffff;
+    }
+
+.empty-orders-msg {
+    color: var(--text-muted);
+    font-style: italic;
+    padding: 2.5rem 0;
+    text-align: center;
+}
+
+.order-items-list {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+
+.ref-pill {
+    color: var(--ice-glacier-blue);
+    font-weight: 900;
+    letter-spacing: 0.3px;
+}
+
+@media (max-width: 640px) {
+    .form-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .form-actions {
+        flex-direction: column-reverse;
+    }
+
+    .form-actions button {
+        width: 100%;
+    }
+
+    .admin-header-inner {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .admin-clock {
+        text-align: left;
+    }
+}
