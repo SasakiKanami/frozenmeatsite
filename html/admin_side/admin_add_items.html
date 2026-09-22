@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Add Items - J&R Frozen Goods Admin Panel</title>
+    <!-- External CSS Dependencies (No internal styles or inline style attributes) -->
+    <link rel="stylesheet" href="../../css/styles.css">
+    <link rel="stylesheet" href="../../css/admin.css">
+</head>
+<body>
+
+    <!-- Top Navigation Header Bar -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="brand">
+            <span class="brand-title">J&R Frozen Goods</span>
+                <span class="brand-sub">Carni-Flow Admin Panel</span>
+            </div>
+            <nav class="nav-links">
+                <a href="../customer_side/index.html" class="nav-link">View Storefront</a>
+                <a href="admin_add_items.html" class="nav-link">Add Items</a>
+            </nav>
+        </div>
+    </nav>
+
+    <!-- Compact Admin Hero Header -->
+    <header class="admin-header">
+        <div class="admin-header-inner">
+            <div>
+                <div class="admin-eyebrow">
+                    Operations Control Center
+                </div>
+                <h1 class="admin-title">Add Stock Items</h1>
+                <p class="admin-desc">Register new inventory, specify storage categories, and set initial stock levels.</p>
+            </div>
+            <div class="admin-clock">
+                <div class="admin-clock-time" id="clock-time">--:--:-- --</div>
+                <div class="admin-clock-date" id="clock-date">Loading...</div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="container">
+
+        <!-- Add Items Admin Panel Card -->
+        <section class="admin-panel">
+            <div class="admin-panel-header">
+                <div>
+                    <h2 class="admin-panel-title">Item Registration Form</h2>
+                    <p class="admin-panel-sub">Fill in the product details below to add a new item to the Carni-Flow inventory.</p>
+                </div>
+            </div>
+
+            <!-- Item Registration Form -->
+            <form id="add-item-form">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label class="form-label" for="sku-code">SKU / Item Code</label>
+                        <input type="text" id="sku-code" class="form-input" placeholder="e.g. JR-8821" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="product-name">Product Name</label>
+                        <input type="text" id="product-name" class="form-input" placeholder="e.g. Pork Belly Slab Cut" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="category">Category</label>
+                        <select id="category" class="form-input" required>
+                            <option value="">Select Category...</option>
+                            <option value="Pork Provisions">Pork Provisions</option>
+                            <option value="Beef Cuts">Beef Cuts</option>
+                            <option value="Poultry">Poultry</option>
+                            <option value="Seafood & Processed">Seafood & Processed</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label class="form-label" for="initial-qty">Initial Stock Quantity</label>
+                        <input type="number" min="0" id="initial-qty" class="form-input" placeholder="e.g. 50" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="low-stock-limit">Minimum Threshold (Alert)</label>
+                        <input type="number" min="1" id="low-stock-limit" class="form-input" value="10" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="unit-price">Price per Unit / Kg ($ / ₱)</label>
+                        <input type="number" step="0.01" min="0" id="unit-price" class="form-input" placeholder="0.00" required>
+                    </div>
+                </div>
+
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label class="form-label" for="storage-zone">Storage Temperature / Zone</label>
+                        <select id="storage-zone" class="form-input">
+                            <option value="Deep Freeze (-18°C)">Deep Freeze (-18°C)</option>
+                            <option value="Fresh Chilled (2°C)">Fresh Chilled (2°C)</option>
+                            <option value="Blast Locker A">Blast Locker A</option>
+                            <option value="Secondary Vault B">Secondary Vault B</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-actions">
+                    <button type="button" class="btn-reset" id="btn-reset-form">
+                        Clear Form
+                    </button>
+                    <button type="submit" class="btn-restock">
+                        Add Item to Stock
+                    </button>
+                </div>
+            </form>
+        </section>
+
+        <!-- Recent Additions Table -->
+        <section class="admin-panel">
+            <div class="admin-panel-header">
+                <div>
+                    <h3 class="admin-panel-title">Session Inventory Additions</h3>
+                    <p class="admin-panel-sub">Live confirmation feed of stock items committed during this session.</p>
+                </div>
+            </div>
+
+            <div class="table-scroll">
+                <table class="admin-table">
+                    <thead>
+                        <tr>
+                            <th>SKU Ref</th>
+                            <th>Item Name</th>
+                            <th>Category</th>
+                            <th>Price / Unit</th>
+                            <th>Quantity</th>
+                            <th>Status</th>
+                            <th>Storage Zone</th>
+                        </tr>
+                    </thead>
+                    <tbody id="recent-items-body">
+                        <tr>
+                            <td class="ref-pill">JR-8801</td>
+                            <td class="cell-product-name">Angus Prime Tomahawk</td>
+                            <td class="cell-product-cat">Beef Cuts</td>
+                            <td>$48.50</td>
+                            <td class="stock-qty-value">45 units</td>
+                            <td><span class="stock-pill in-stock">IN STOCK</span></td>
+                            <td class="cell-product-cat">Deep Freeze (-18°C)</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+    </main>
+
+    <script>
+        // Real-time Clock Updater
+        function updateClock() {
+            const now = new Date();
+            const timeStr = now.toLocaleTimeString('en-US', { hour12: true, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            const dateStr = now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+            
+            const timeEl = document.getElementById('clock-time');
+            const dateEl = document.getElementById('clock-date');
+            
+            if (timeEl) timeEl.textContent = timeStr;
+            if (dateEl) dateEl.textContent = dateStr;
+        }
+        setInterval(updateClock, 1000);
+        updateClock();
+
+        // Reset Button Action
+        document.getElementById('btn-reset-form').addEventListener('click', function() {
+            document.getElementById('add-item-form').reset();
+        });
+
+        // Form Submit Handler
+        document.getElementById('add-item-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const sku = document.getElementById('sku-code').value.trim();
+            const name = document.getElementById('product-name').value.trim();
+            const category = document.getElementById('category').value;
+            const price = parseFloat(document.getElementById('unit-price').value).toFixed(2);
+            const qty = parseInt(document.getElementById('initial-qty').value, 10);
+            const lowLimit = parseInt(document.getElementById('low-stock-limit').value, 10);
+            const zone = document.getElementById('storage-zone').value;
+
+            // Determine stock status pill class
+            let statusClass = 'in-stock';
+            let statusText = 'IN STOCK';
+
+            if (qty === 0) {
+                statusClass = 'out-stock';
+                statusText = 'OUT OF STOCK';
+            } else if (qty <= lowLimit) {
+                statusClass = 'low-stock';
+                statusText = 'LOW STOCK';
+            }
+
+            // Append newly added row to session feed table
+            const tbody = document.getElementById('recent-items-body');
+            const newRow = document.createElement('tr');
+            newRow.innerHTML = `
+                <td class="ref-pill">${sku}</td>
+                <td class="cell-product-name">${name}</td>
+                <td class="cell-product-cat">${category}</td>
+                <td>$${price}</td>
+                <td class="stock-qty-value">${qty} units</td>
+                <td><span class="stock-pill ${statusClass}">${statusText}</span></td>
+                <td class="cell-product-cat">${zone}</td>
+            `;
+
+            tbody.insertBefore(newRow, tbody.firstChild);
+
+            // Reset form upon successful submission
+            document.getElementById('add-item-form').reset();
+        });
+    </script>
+</body>
+</html>

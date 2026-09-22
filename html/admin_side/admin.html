@@ -16,14 +16,13 @@
             <div class="brand">
                 <span class="brand-title">J&R Frozen Goods</span>
                 <span class="brand-sub">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M12 2v20M2 12h20M4.93 4.93l14.14 14.14M4.93 19.07L19.07 4.93" />
-                    </svg>
                     Carni-Flow Admin Panel
                 </span>
             </div>
             <nav class="nav-links">
-                <a href="index.html" class="nav-link">← Back to Storefront</a>
+                <a href="../customer_side/index.html" target="_blank" class="nav-link">View Storefront</a>
+                <span class="divider">|</span> 
+                <a href="../admin_side/admin_add_items.html" target="_blank" class="nav-link">Add Items</a>
             </nav>
         </div>
     </header>
@@ -111,6 +110,7 @@
         <div class="admin-tabs">
             <button class="admin-tab active" id="tab-btn-inventory" type="button" onclick="switchTab('inventory')">Inventory</button>
             <button class="admin-tab" id="tab-btn-orders" type="button" onclick="switchTab('orders')">Guest Orders</button>
+            <button class="admin-tab" id="tab-btn-orders_from_accounts" type="button" onclick="switchTab('orders_from_accounts')">Registered Account Orders</button>
         </div>
 
         <!-- Inventory Tab -->
@@ -131,7 +131,8 @@
                                 <th>Unit Price</th>
                                 <th>Status</th>
                                 <th>Stock on Hand</th>
-                                <th>Batch</th>
+                                <th>Edit Stock by tens</th>
+
                             </tr>
                         </thead>
                         <tbody id="inventory-table-body">
@@ -172,6 +173,38 @@
                 </div>
             </div>
         </section>
+
+        <!-- Orders from Registered Accounts Tab -->
+        <section class="admin-tab-panel" id="tab-panel-orders_from_accounts">
+            <div class="admin-panel">
+                <div class="admin-panel-header">
+                    <div>
+                        <div class="admin-panel-title">Registered Account Order Log</div>
+                        <div class="admin-panel-sub">Orders placed by users with a registered account.</div>
+                    </div>
+                </div>
+                <p class="empty-orders-msg hidden" id="account-orders-empty-msg">No registered-account orders placed yet.</p>
+                <div class="table-scroll">
+                    <table class="admin-table">
+                        <thead>
+                            <tr>
+                                <th>Reference</th>
+                                <th>Placed</th>
+                                <th>Customer</th>
+                                <th>Items</th>
+                                <th>Fulfillment</th>
+                                <th>Payment</th>
+                                <th>Total</th>
+                            </tr>
+                        </thead>
+                        <tbody id="account-orders-table-body">
+                            <!-- Populated when registered-account orders are connected -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
 
     </main>
 

@@ -102,7 +102,8 @@ function renderInventoryTable() {
           <button class="btn-qty" type="button" onclick="adjustStock(${item.id}, 1)">+</button>
         </div>
       </td>
-      <td><button class="btn-restock" type="button" onclick="restockItem(${item.id})">+10 Restock</button></td>
+      <td><button class="btn-restock" type="button" onclick="restockItem(${item.id})">+10 Stock</button> <button class="btn-restock" type="button" onclick="removeTenItems(${item.id})">-10 Stock</button></td>
+      <td></td>
     `;
         body.appendChild(row);
     });
@@ -118,11 +119,20 @@ function adjustStock(id, change) {
     renderStats();
 }
 
-// 9. Simulate receiving a fresh batch delivery (+10 units at once)
+// 9. Simulate receiving a fresh batch delivery (+10 units at once), and allow for adding and removing ten at a time
 function restockItem(id) {
     const item = inventory.find(i => i.id === id);
     if (!item) return;
     item.stock += 10;
+    saveInventory();
+    renderInventoryTable();
+    renderStats();
+}
+
+function removeTenItems(id) {
+    const item = inventory.find(i => i.id === id);
+    if (!item) return;
+    item.stock = Math.max(0, item.stock - 10);
     saveInventory();
     renderInventoryTable();
     renderStats();
