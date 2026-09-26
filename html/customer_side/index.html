@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>J&R Frozen Goods | Sub-Zero Catalog</title>
+    <!-- Purely external CSS -->
+    <link rel="stylesheet" href="../../css/styles.css"> <!--Changed the file path, added folders for organization-->
+    <link rel="stylesheet" href="../../css/mobile-styles.css" media="(max-width: 375px)">
+</head>
+<body>
+
+    <!-- Chilled Navigation -->
+    <header class="navbar">
+        <div class="nav-container">
+            <div class="brand">
+                <span class="brand-title">J&Rs Frozen Goods</span>
+                <span class="brand-sub">
+                    <!-- <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12 2v20M2 12h20M4.93 4.93l14.14 14.14M4.93 19.07L19.07 4.93" />
+                    </svg> -->
+                    Carni-Flow Cold Storage
+                </span>
+            </div>
+            <nav class="nav-links">
+
+                <a href="order.html" class="cart-pill">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4zM3 6h18M16 10a4 4 0 0 1-8 0" />
+                    </svg>
+                    <span class="basket-label">Basket</span> <span id="cart-count">0</span>
+                </a>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Hero with Breath Fog and Snowfall Motion -->
+    <section class="hero">
+
+        <!-- Drifting Snowflake Particles -->
+        <div class="snow-container" aria-hidden="true">
+            <span class="snowflake flake-1">❄</span>
+            <span class="snowflake flake-2">❅</span>
+            <span class="snowflake flake-3">❄</span>
+            <span class="snowflake flake-4">❆</span>
+            <span class="snowflake flake-5">❄</span>
+            <span class="snowflake flake-6">❅</span>
+        </div>
+
+        <!-- <div class="hero-content">
+            <div class="hero-tag">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12 2v20M2 12h20M4.93 4.93l14.14 14.14M4.93 19.07L19.07 4.93" />
+                </svg>
+                Sub-Zero Batch Inventory (-18°C)
+            </div>
+
+            -->
+            <h1 class="hero-title">Fresh Cuts & Frozen Retail</h1>
+            <p class="hero-desc">Directly order fresh batches straight from our refrigerated storage. Fast guest checkout with no account required. Make an account to save order details!</p>
+            <!-- <a href="order.html" class="btn-ice">
+                <span>Proceed to Basket & Reserve</span>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <path d="M5 12h14M12 5l7 7-7 7" />
+                </svg>
+            </a> -->
+        </div>
+    </section>
+
+    <!-- Frosted Glass Catalog -->
+    <main class="container" id="catalog">
+        <div class="section-header">
+            <h2 class="section-title">Shop Our Frozen Goods</h2>
+            <p class="section-desc">Strictly managed under First-In, First-Out (FIFO) stock rules.</p>
+        </div>
+
+        <div class="product-grid">
+
+            <!-- Pork Liempo: Fresh Chilled -->
+            <article class="product-card">
+                <div class="badge badge-fresh-chilled">
+                    <span>❄️ Fresh Chilled</span>
+                </div>
+                <h3 class="product-name">Pork Liempo Cut</h3>
+                <p class="product-category">Pork Belly • Batch Verified</p>
+
+                <img src="../../assets/pictures/pork_liempo.png">
+
+                <div class="price-container">
+                    <svg class="price-icon" viewBox="0 0 24 24"><path d="M12 2v20M2 12h20M4.93 4.93l14.14 14.14M4.93 19.07L19.07 4.93" /></svg>
+                    <p class="product-price">₱250.00 / kg</p>
+                </div>
+                <button class="btn-card" type="button" onclick="addToCart('Pork Liempo Cut (1kg)', 250.00)">+ Add to Order</button>
+            </article>
+
+            <!-- Pork Chop: Fresh Chilled -->
+            <article class="product-card">
+                <div class="badge badge-fresh-chilled">
+                    <span>❄️ Fresh Chilled</span>
+                </div>
+                <h3 class="product-name">Pork Chop Cut</h3>
+                <p class="product-category">Pork Loin • Batch Verified</p>
+
+                <img src="../../assets/pictures/pork_chop.png">
+
+                <div class="price-container">
+                    <svg class="price-icon" viewBox="0 0 24 24"><path d="M12 2v20M2 12h20M4.93 4.93l14.14 14.14M4.93 19.07L19.07 4.93" /></svg>
+                    <p class="product-price">₱220.00 / kg</p>
+                </div>
+                <button class="btn-card" type="button" onclick="addToCart('Pork Chop Cut (1kg)', 220.00)">+ Add to Order</button>
+            </article>
+
+            <!-- Chicken Breast: Fresh Chilled -->
+            <article class="product-card">
+                <div class="badge badge-fresh-chilled">
+                    <span>❄️ Fresh Chilled</span>
+                </div>
+                <h3 class="product-name">Chicken Breast Fillet</h3>
+                <p class="product-category">Poultry • Lean Cut</p>
+                <div class="price-container">
+                    <svg class="price-icon" viewBox="0 0 24 24"><path d="M12 2v20M2 12h20M4.93 4.93l14.14 14.14M4.93 19.07L19.07 4.93" /></svg>
+                    <p class="product-price">₱210.00 / kg</p>
+                </div>
+                <button class="btn-card" type="button" onclick="addToCart('Chicken Breast Fillet (1kg)', 210.00)">+ Add to Order</button>
+            </article>
+
+            <!-- Beef Bulalo: Deep Freeze -->
+            <article class="product-card">
+                <div class="badge badge-deep-freeze">
+                    <span>❅ Deep Freeze (-18°C)</span>
+                </div>
+                <h3 class="product-name">Beef Bulalo / Shank</h3>
+                <p class="product-category">Beef Cuts • Bone-in Marrow</p>
+                <div class="price-container">
+                    <svg class="price-icon" viewBox="0 0 24 24"><path d="M12 2v20M2 12h20M4.93 4.93l14.14 14.14M4.93 19.07L19.07 4.93" /></svg>
+                    <p class="product-price">₱380.00 / kg</p>
+                </div>
+                <button class="btn-card" type="button" onclick="addToCart('Beef Bulalo Shank (1kg)', 380.00)">+ Add to Order</button>
+            </article>
+
+            <!-- Tender Juicy: Processed Pack -->
+            <article class="product-card">
+                <div class="badge badge-processed">
+                    <span>📦 Processed Pack</span>
+                </div>
+                <h3 class="product-name">Tender Juicy Hotdog</h3>
+                <p class="product-category">1kg Classic Jumbo Sealed</p>
+
+                <img src="../../assets/pictures/tj_hotdog.jpg">
+
+                <div class="price-container">
+                    <svg class="price-icon" viewBox="0 0 24 24"><path d="M12 2v20M2 12h20M4.93 4.93l14.14 14.14M4.93 19.07L19.07 4.93" /></svg>
+                    <p class="product-price">₱200.00 / pack</p>
+                </div>
+                <button class="btn-card" type="button" onclick="addToCart('Tender Juicy Hotdog 1kg', 200.00)">+ Add to Order</button>
+            </article>
+
+            <!-- Tocino: Processed Pack -->
+            <article class="product-card">
+                <div class="badge badge-processed">
+                    <span>📦 Processed Pack</span>
+                </div>
+                <h3 class="product-name">Young Pork Tocino</h3>
+                <p class="product-category">Sweet Cured Pork Pack</p>
+                <div class="price-container">
+                    <svg class="price-icon" viewBox="0 0 24 24"><path d="M12 2v20M2 12h20M4.93 4.93l14.14 14.14M4.93 19.07L19.07 4.93" /></svg>
+                    <p class="product-price">₱75.00 / pack</p>
+                </div>
+                <button class="btn-card" type="button" onclick="addToCart('Young Pork Tocino pack', 75.00)">+ Add to Order</button>
+            </article>
+
+        </div>
+    </main>
+
+    <footer class="footer">
+        <p>J&R Frozen Goods • Sangandaan, Caloocan City</p>
+    </footer>
+
+    <script src="../../js/main.js"></script>
+</body>
+</html>
+
+<!--test-->
