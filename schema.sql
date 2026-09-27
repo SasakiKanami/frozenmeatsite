@@ -1,5 +1,5 @@
 -- Carni-Flow Relational Database Schema
--- Database: carni_flow_db
+-- Database: frozenmeatsite_db
 
 DROP VIEW IF EXISTS view_catalog_live_stock CASCADE;
 DROP TABLE IF EXISTS archived_batches CASCADE;
@@ -17,7 +17,7 @@ CREATE TABLE users (
     full_name VARCHAR(100) NOT NULL,
     username VARCHAR(50) UNIQUE NOT NULL,
     password_hash VARCHAR(255) NOT NULL,
-    role VARCHAR(20) NOT NULL CHECK (role IN ('admin', 'cashier')),
+    role VARCHAR(20) NOT NULL CHECK (role IN ('admin', 'cashier', 'customer')),
     is_deleted BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     deleted_at TIMESTAMP NULL

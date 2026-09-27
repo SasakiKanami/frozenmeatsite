@@ -2,6 +2,7 @@ package com.example.demo;
 
 import jakarta.persistence.*;
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Entity
@@ -14,9 +15,14 @@ public class InventoryBatch {
 
     private Integer productId;
     private String batchNumber;
+    private String supplierName = "Direct Meat Supplier";
+    private BigDecimal initialQty;
     private BigDecimal remainingQty;
     private LocalDateTime arrivalDate;
+    private LocalDate expirationDate;
     private Boolean isDeleted = false;
+    private LocalDateTime createdAt;
+    private LocalDateTime deletedAt;
 
     public LocalDateTime getArrivalDate() {
         return arrivalDate;
@@ -50,6 +56,22 @@ public class InventoryBatch {
         this.batchNumber = batchNumber;
     }
 
+    public String getSupplierName() {
+        return supplierName;
+    }
+
+    public void setSupplierName(String supplierName) {
+        this.supplierName = supplierName;
+    }
+
+    public BigDecimal getInitialQty() {
+        return initialQty;
+    }
+
+    public void setInitialQty(BigDecimal initialQty) {
+        this.initialQty = initialQty;
+    }
+
     public BigDecimal getRemainingQty() {
         return remainingQty;
     }
@@ -58,12 +80,36 @@ public class InventoryBatch {
         this.remainingQty = remainingQty;
     }
 
+    public LocalDate getExpirationDate() {
+        return expirationDate;
+    }
+
+    public void setExpirationDate(LocalDate expirationDate) {
+        this.expirationDate = expirationDate;
+    }
+
     public Boolean getDeleted() {
         return isDeleted;
     }
 
     public void setDeleted(Boolean deleted) {
         isDeleted = deleted;
+    }
+
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
+    }
+
+    public void setCreatedAt(LocalDateTime createdAt) {
+        this.createdAt = createdAt;
+    }
+
+    public LocalDateTime getDeletedAt() {
+        return deletedAt;
+    }
+
+    public void setDeletedAt(LocalDateTime deletedAt) {
+        this.deletedAt = deletedAt;
     }
 
 }
