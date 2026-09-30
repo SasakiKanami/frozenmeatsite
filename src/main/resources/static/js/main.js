@@ -160,7 +160,7 @@ function changeQty(index, change) {
 }
 
 // 7. Handle Guest Form Submission
-function handleGuestCheckout(event) {
+async function handleGuestCheckout(event) {
     event.preventDefault();
 
     if (cart.length === 0) {
@@ -168,33 +168,59 @@ function handleGuestCheckout(event) {
         return;
     }
 
-    // Generate a random Order Reference Number (e.g., CF-9281)
-    const orderRef = 'CF-' + Math.floor(1000 + Math.random() * 9000);
+    if (cart.some(item => !Number.isInteger(item.productId) || item.productId <= 0)) {
+        alert('Your basket has an older item format. Return to the catalog, remove those items, and add them again.');
+        return;
+    }
 
-    const guestName = document.getElementById('guestName').value;
-    const guestPhone = document.getElementById('guestPhone').value;
+    const guestName = document.getElementById('guestName').value.trim();
+    const guestPhone = document.getElementById('guestPhone').value.trim();
     const fulfillmentType = document.getElementById('fulfillmentType').value;
     const paymentMethod = document.getElementById('paymentMethod').value;
+    const submitButton = event.currentTarget.querySelector('button[type="submit"]');
+    submitButton.disabled = true;
 
-    // Display receipt confirmation card
-    const checkoutCard = document.getElementById('checkout-card');
-    const confirmationCard = document.getElementById('confirmation-card');
+    try {
+        const response = await fetch('/api/orders', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                order: {
+                    customerName: guestName,
+                    customerContact: guestPhone,
+                    fulfillmentMethod: fulfillmentType,
+                    paymentMethod: paymentMethod
+                },
+                items: cart.map(item => ({
+                    productId: item.productId,
+                    quantity: item.qty
+                }))
+            })
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(result.error || 'We could not place your order. Please try again.');
 
-    if (checkoutCard && confirmationCard) {
-        document.getElementById('conf-ref').textContent = orderRef;
+        const checkoutCard = document.getElementById('checkout-card');
+        const confirmationCard = document.getElementById('confirmation-card');
+        if (!checkoutCard || !confirmationCard) throw new Error('Order was placed, but the confirmation could not be displayed.');
+
+        document.getElementById('conf-ref').textContent = result.referenceId;
         document.getElementById('conf-name').textContent = guestName;
         document.getElementById('conf-phone').textContent = guestPhone;
         document.getElementById('conf-fulfillment').textContent = fulfillmentType.toUpperCase();
         document.getElementById('conf-payment').textContent = paymentMethod.toUpperCase();
-        document.getElementById('conf-total').textContent = document.getElementById('cart-total-price').textContent;
+        document.getElementById('conf-total').textContent = `₱${Number(result.totalAmount).toFixed(2)}`;
 
         checkoutCard.classList.add('hidden');
         confirmationCard.classList.remove('hidden');
 
-        // Clear the cart after placing order
         cart = [];
         saveCart();
         updateCartBadge();
+    } catch (error) {
+        alert(error.message);
+    } finally {
+        submitButton.disabled = false;
     }
 }
 

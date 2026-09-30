@@ -1,10 +1,18 @@
 package com.example.demo;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api")
@@ -13,47 +21,105 @@ public class CheckoutController {
     @Autowired private OrderRepository orderRepository;
     @Autowired private OrderItemRepository orderItemRepository;
     @Autowired private InventoryBatchRepository batchRepository;
+    @Autowired private ProductRepository productRepository;
 
     @PostMapping("/orders")
-    @Transactional // Ensures that if stock runs out mid-checkout, the entire database transaction rolls back
-    public String processCheckout(@RequestBody CheckoutRequest request) {
+    @Transactional
+    public ResponseEntity<?> processCheckout(@RequestBody CheckoutRequest request) {
+        if (request == null || request.getOrder() == null || request.getItems() == null || request.getItems().isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Customer details and at least one item are required"));
+        }
 
-        // 1. Save the main order to generate the Order ID
-        Order savedOrder = orderRepository.save(request.getOrder());
+        Order submittedOrder = request.getOrder();
+        if (isBlank(submittedOrder.getCustomerName()) || isBlank(submittedOrder.getCustomerContact())
+                || !List.of("Storefront Pickup", "Same-Day Delivery").contains(submittedOrder.getFulfillmentMethod())
+                || !List.of("Cash on Pickup / Delivery", "GCash Transfer").contains(submittedOrder.getPaymentMethod())) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Customer name, contact, fulfillment, and payment details are required"));
+        }
 
-        // 2. Process each cart item
-        for (OrderItem item : request.getItems()) {
+        Map<Integer, Product> products = new LinkedHashMap<>();
+        Map<Integer, BigDecimal> requestedByProduct = new TreeMap<>();
+        List<OrderItem> orderItems = new ArrayList<>();
+        BigDecimal total = BigDecimal.ZERO.setScale(2);
+
+        for (OrderItem submittedItem : request.getItems()) {
+            if (submittedItem == null || submittedItem.getProductId() == null || submittedItem.getQuantity() == null
+                    || submittedItem.getQuantity().compareTo(BigDecimal.ZERO) <= 0
+                    || submittedItem.getQuantity().stripTrailingZeros().scale() > 2) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Each item needs a product and a positive quantity with at most two decimal places"));
+            }
+
+            Product product = products.get(submittedItem.getProductId());
+            if (product == null) {
+                product = productRepository.findById(submittedItem.getProductId()).orElse(null);
+                if (product == null || Boolean.TRUE.equals(product.getDeleted())) {
+                    return ResponseEntity.badRequest().body(Map.of("error", "A requested product is unavailable"));
+                }
+                products.put(product.getId(), product);
+            }
+
+            BigDecimal quantity = submittedItem.getQuantity();
+            BigDecimal subtotal = product.getPricePerUnit().multiply(quantity).setScale(2, RoundingMode.HALF_UP);
+            total = total.add(subtotal);
+            requestedByProduct.merge(product.getId(), quantity, BigDecimal::add);
+
+            OrderItem orderItem = new OrderItem();
+            orderItem.setProductId(product.getId());
+            orderItem.setQuantity(quantity);
+            orderItem.setUnitPrice(product.getPricePerUnit());
+            orderItem.setSubtotal(subtotal);
+            orderItems.add(orderItem);
+        }
+
+        Map<Integer, List<InventoryBatch>> availableBatchesByProduct = new LinkedHashMap<>();
+        for (Map.Entry<Integer, BigDecimal> requested : requestedByProduct.entrySet()) {
+            List<InventoryBatch> availableBatches = batchRepository
+                    .findAvailableBatchesForUpdate(requested.getKey(), BigDecimal.ZERO);
+            BigDecimal availableQuantity = availableBatches.stream()
+                    .map(InventoryBatch::getRemainingQty)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+            if (availableQuantity.compareTo(requested.getValue()) < 0) {
+                return ResponseEntity.status(HttpStatus.CONFLICT)
+                        .body(Map.of("error", "Insufficient stock for product ID: " + requested.getKey()));
+            }
+            availableBatchesByProduct.put(requested.getKey(), availableBatches);
+        }
+
+        Order order = new Order();
+        order.setReferenceId("CF-" + UUID.randomUUID().toString().replace("-", ""));
+        order.setOrderSource("online");
+        order.setCustomerName(submittedOrder.getCustomerName().trim());
+        order.setCustomerContact(submittedOrder.getCustomerContact().trim());
+        order.setFulfillmentMethod(submittedOrder.getFulfillmentMethod());
+        order.setPaymentMethod(submittedOrder.getPaymentMethod());
+        order.setTotalAmount(total);
+        Order savedOrder = orderRepository.save(order);
+
+        for (OrderItem item : orderItems) {
             item.setOrderId(savedOrder.getId());
-            orderItemRepository.save(item);
-
+            OrderItem savedItem = orderItemRepository.save(item);
             BigDecimal qtyToDeduct = item.getQuantity();
 
-            // 3. FIFO Logic: Fetch batches for this product ordered by oldest arrival date
-            List<InventoryBatch> availableBatches = batchRepository
-                    .findByProductIdAndRemainingQtyGreaterThanOrderByArrivalDateAsc(item.getProductId(), BigDecimal.ZERO);
+            for (InventoryBatch batch : availableBatchesByProduct.get(item.getProductId())) {
+                if (qtyToDeduct.compareTo(BigDecimal.ZERO) <= 0) break;
 
-            for (InventoryBatch batch : availableBatches) {
-                if (qtyToDeduct.compareTo(BigDecimal.ZERO) <= 0) break; // Finished deducting for this item
-
-                BigDecimal availableInBatch = batch.getRemainingQty();
-
-                if (availableInBatch.compareTo(qtyToDeduct) >= 0) {
-                    // Batch has enough to cover the remaining deduction
-                    batch.setRemainingQty(availableInBatch.subtract(qtyToDeduct));
-                    qtyToDeduct = BigDecimal.ZERO;
-                } else {
-                    // Batch doesn't have enough; drain it entirely and carry over the remainder
-                    batch.setRemainingQty(BigDecimal.ZERO);
-                    qtyToDeduct = qtyToDeduct.subtract(availableInBatch);
-                }
+                BigDecimal deduction = batch.getRemainingQty().min(qtyToDeduct);
+                batch.setRemainingQty(batch.getRemainingQty().subtract(deduction));
+                qtyToDeduct = qtyToDeduct.subtract(deduction);
                 batchRepository.save(batch);
             }
-
-            if (qtyToDeduct.compareTo(BigDecimal.ZERO) > 0) {
-                throw new RuntimeException("Insufficient stock for product ID: " + item.getProductId());
-            }
         }
-        return "Checkout successful! Order ID: " + savedOrder.getId();
+
+        return ResponseEntity.ok(Map.of(
+                "message", "Checkout successful",
+                "orderId", savedOrder.getId(),
+                "referenceId", savedOrder.getReferenceId(),
+                "totalAmount", total
+        ));
+    }
+
+    private boolean isBlank(String value) {
+        return value == null || value.isBlank();
     }
 }
 
