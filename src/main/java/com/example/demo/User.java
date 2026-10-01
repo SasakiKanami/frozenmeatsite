@@ -14,6 +14,11 @@ public class User {
     private String username;
     private String passwordHash;
     private String role; // e.g., "customer" or "admin"
+    private String email;
+    private String phone;
+    private String addressLine;
+    private String city;
+    private String landmark;
 
     public Integer getId() {
         return id;
@@ -54,4 +59,15 @@ public class User {
     public void setRole(String role) {
         this.role = role;
     }
+
+    public String getEmail() { return email; }
+    public void setEmail(String email) { this.email = email; }
+    public String getPhone() { return phone; }
+    public void setPhone(String phone) { this.phone = phone; }
+    public String getAddressLine() { return addressLine; }
+    public void setAddressLine(String addressLine) { this.addressLine = addressLine; }
+    public String getCity() { return city; }
+    public void setCity(String city) { this.city = city; }
+    public String getLandmark() { return landmark; }
+    public void setLandmark(String landmark) { this.landmark = landmark; }
 }

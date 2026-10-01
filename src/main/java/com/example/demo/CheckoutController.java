@@ -36,6 +36,9 @@ public class CheckoutController {
                 || !List.of("Cash on Pickup / Delivery", "GCash Transfer").contains(submittedOrder.getPaymentMethod())) {
             return ResponseEntity.badRequest().body(Map.of("error", "Customer name, contact, fulfillment, and payment details are required"));
         }
+        if ("Same-Day Delivery".equals(submittedOrder.getFulfillmentMethod()) && isBlank(submittedOrder.getDeliveryAddress())) {
+            return ResponseEntity.badRequest().body(Map.of("error", "A delivery address is required for same-day delivery"));
+        }
 
         Map<Integer, Product> products = new LinkedHashMap<>();
         Map<Integer, BigDecimal> requestedByProduct = new TreeMap<>();
@@ -90,8 +93,14 @@ public class CheckoutController {
         order.setOrderSource("online");
         order.setCustomerName(submittedOrder.getCustomerName().trim());
         order.setCustomerContact(submittedOrder.getCustomerContact().trim());
+        order.setCustomerEmail(blankToNull(submittedOrder.getCustomerEmail()));
+        order.setCustomerUserId(null);
         order.setFulfillmentMethod(submittedOrder.getFulfillmentMethod());
+        order.setDeliveryAddress(blankToNull(submittedOrder.getDeliveryAddress()));
+        order.setDeliveryNotes(blankToNull(submittedOrder.getDeliveryNotes()));
+        order.setDeliveryFee(BigDecimal.ZERO.setScale(2));
         order.setPaymentMethod(submittedOrder.getPaymentMethod());
+        order.setPaymentStatus("unpaid");
         order.setTotalAmount(total);
         Order savedOrder = orderRepository.save(order);
 
@@ -120,6 +129,10 @@ public class CheckoutController {
 
     private boolean isBlank(String value) {
         return value == null || value.isBlank();
+    }
+
+    private String blankToNull(String value) {
+        return isBlank(value) ? null : value.trim();
     }
 }
 

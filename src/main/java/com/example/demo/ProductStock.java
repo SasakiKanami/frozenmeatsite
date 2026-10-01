@@ -17,6 +17,7 @@ public class ProductStock {
     private String unit;
     private BigDecimal pricePerUnit;
     private String imageUrl;
+    private BigDecimal reorderLevel;
     private BigDecimal inStockQty;
 
     // Getters
@@ -27,5 +28,6 @@ public class ProductStock {
     public String getUnit() { return unit; }
     public BigDecimal getPricePerUnit() { return pricePerUnit; }
     public String getImageUrl() { return imageUrl; }
+    public BigDecimal getReorderLevel() { return reorderLevel; }
     public BigDecimal getInStockQty() { return inStockQty; }
 }

@@ -15,8 +15,14 @@ public class Order {
     private String orderSource;
     private String customerName;
     private String customerContact;
+    private String customerEmail;
+    private Integer customerUserId;
     private String fulfillmentMethod;
+    private String deliveryAddress;
+    private String deliveryNotes;
+    private BigDecimal deliveryFee;
     private String paymentMethod;
+    private String paymentStatus = "unpaid";
     private BigDecimal totalAmount;
     private String orderStatus = "completed";
 
@@ -60,6 +66,11 @@ public class Order {
         this.customerContact = customerContact;
     }
 
+    public String getCustomerEmail() { return customerEmail; }
+    public void setCustomerEmail(String customerEmail) { this.customerEmail = customerEmail; }
+    public Integer getCustomerUserId() { return customerUserId; }
+    public void setCustomerUserId(Integer customerUserId) { this.customerUserId = customerUserId; }
+
     public String getFulfillmentMethod() {
         return fulfillmentMethod;
     }
@@ -68,6 +79,13 @@ public class Order {
         this.fulfillmentMethod = fulfillmentMethod;
     }
 
+    public String getDeliveryAddress() { return deliveryAddress; }
+    public void setDeliveryAddress(String deliveryAddress) { this.deliveryAddress = deliveryAddress; }
+    public String getDeliveryNotes() { return deliveryNotes; }
+    public void setDeliveryNotes(String deliveryNotes) { this.deliveryNotes = deliveryNotes; }
+    public BigDecimal getDeliveryFee() { return deliveryFee; }
+    public void setDeliveryFee(BigDecimal deliveryFee) { this.deliveryFee = deliveryFee; }
+
     public String getPaymentMethod() {
         return paymentMethod;
     }
@@ -75,6 +93,9 @@ public class Order {
     public void setPaymentMethod(String paymentMethod) {
         this.paymentMethod = paymentMethod;
     }
+
+    public String getPaymentStatus() { return paymentStatus; }
+    public void setPaymentStatus(String paymentStatus) { this.paymentStatus = paymentStatus; }
 
     public BigDecimal getTotalAmount() {
         return totalAmount;

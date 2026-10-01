@@ -83,6 +83,20 @@
         <p>J&R Frozen Goods • Sangandaan, Caloocan City</p>
     </footer>
 
+    
+    <dialog id="quantity-dialog" class="quantity-dialog">
+        <center><form method="dialog" id="quantity-form" class="quantity-form">
+            <button type="button" class="dialog-close" id="quantity-dialog-close" aria-label="Close">×</button>
+            <h2 class="card-heading">Add multiple</h2>
+            <p id="quantity-product-name" class="card-sub"></p>
+            <label for="quantity-input" class="form-label">Quantity</label>
+            <input type="number" id="quantity-input" class="form-input" min="1" step="1" required>
+            <p id="quantity-stock-message" class="quantity-stock-message"></p>
+            <button type="submit" class="btn-submit-order">Add to Order</button>
+        </form></center>
+    </dialog>
+    
+
     <script src="../../js/main.js"></script>
 </body>
 </html>

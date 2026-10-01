@@ -18,6 +18,11 @@ CREATE TABLE users (
     username VARCHAR(50) UNIQUE NOT NULL,
     password_hash VARCHAR(255) NOT NULL,
     role VARCHAR(20) NOT NULL CHECK (role IN ('admin', 'cashier', 'customer')),
+    email VARCHAR(255),
+    phone VARCHAR(30),
+    address_line TEXT,
+    city VARCHAR(100),
+    landmark TEXT,
     is_deleted BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     deleted_at TIMESTAMP NULL
@@ -60,8 +65,14 @@ CREATE TABLE orders (
     order_source VARCHAR(20) NOT NULL CHECK (order_source IN ('walk_in', 'online')),
     customer_name VARCHAR(100) NOT NULL,
     customer_contact VARCHAR(30) NOT NULL,
+    customer_email VARCHAR(255),
+    customer_user_id INT NULL REFERENCES users(id),
     fulfillment_method VARCHAR(50) NOT NULL CHECK (fulfillment_method IN ('Storefront Pickup', 'Same-Day Delivery')),
+    delivery_address TEXT,
+    delivery_notes TEXT,
+    delivery_fee NUMERIC(10, 2) NOT NULL DEFAULT 0.00 CHECK (delivery_fee >= 0),
     payment_method VARCHAR(50) NOT NULL CHECK (payment_method IN ('Cash on Pickup / Delivery', 'GCash Transfer')),
+    payment_status VARCHAR(20) NOT NULL DEFAULT 'unpaid' CHECK (payment_status IN ('unpaid', 'pending', 'paid', 'failed')),
     total_amount NUMERIC(10, 2) NOT NULL DEFAULT 0.00 CHECK (total_amount >= 0),
     order_status VARCHAR(20) NOT NULL DEFAULT 'completed' CHECK (order_status IN ('pending', 'completed', 'cancelled')),
     created_by_user_id INT NULL REFERENCES users(id),
@@ -119,6 +130,7 @@ SELECT
     p.unit,
     p.price_per_unit,
     p.image_url,
+    p.reorder_level,
     COALESCE(SUM(b.remaining_qty), 0) AS in_stock_qty
 FROM products p
 LEFT JOIN inventory_batches b 
@@ -126,4 +138,4 @@ LEFT JOIN inventory_batches b
     AND b.is_deleted = FALSE 
     AND b.remaining_qty > 0
 WHERE p.is_deleted = FALSE
-GROUP BY p.id, p.name, p.category, p.temperature_tier, p.unit, p.price_per_unit, p.image_url;
+GROUP BY p.id, p.name, p.category, p.temperature_tier, p.unit, p.price_per_unit, p.image_url, p.reorder_level;

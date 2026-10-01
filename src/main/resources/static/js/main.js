@@ -2,20 +2,48 @@
 
 // 1. Load cart from browser storage (no account needed)
 let cart = JSON.parse(localStorage.getItem('carni_guest_cart')) || [];
+let quantityProduct = null;
 
 // 2. Add an item to the guest cart
 function addToCart(name, price, productId, unit) {
-    const existingItem = cart.find(item => item.name === name);
+    addProductQuantity({ name, price, productId, unit, inStockQty: Number.MAX_SAFE_INTEGER }, 1);
+}
+
+function addProductQuantity(product, quantity) {
+    const existingItem = cart.find(item => item.productId === product.productId);
+    const currentQuantity = existingItem ? existingItem.qty : 0;
+    if (currentQuantity + quantity > Number(product.inStockQty)) {
+        alert(`Only ${product.inStockQty} ${product.unit} available for ${product.name}.`);
+        return false;
+    }
 
     if (existingItem) {
-        existingItem.qty += 1;
+        existingItem.qty += quantity;
     } else {
-        cart.push({ name: name, price: price, productId: productId, unit: unit, qty: 1 });
+        cart.push({ name: product.name, price: Number(product.price), productId: product.productId, unit: product.unit, qty: quantity });
     }
 
     saveCart();
     updateCartBadge();
-    alert(`${name} added to your order!`);
+    alert(`${quantity} ${product.unit} of ${product.name} added to your order!`);
+    return true;
+}
+
+function openQuantityDialog(product) {
+    quantityProduct = product;
+    const dialog = document.getElementById('quantity-dialog');
+    const input = document.getElementById('quantity-input');
+    document.getElementById('quantity-product-name').textContent = product.name;
+    document.getElementById('quantity-stock-message').textContent = `${product.inStockQty} ${product.unit} available`;
+    input.max = Math.floor(Number(product.inStockQty));
+    input.value = '1';
+    dialog.showModal();
+    input.focus();
+}
+
+function closeQuantityDialog() {
+    document.getElementById('quantity-dialog').close();
+    quantityProduct = null;
 }
 
 function getBadgeClass(temperatureTier) {
@@ -77,13 +105,25 @@ async function loadCatalog() {
             priceContainer.appendChild(price);
             card.appendChild(priceContainer);
 
-            const button = document.createElement('button');
-            button.className = 'btn-card';
-            button.type = 'button';
-            button.textContent = product.inStockQty > 0 ? '+ Add to Order' : 'Out of Stock';
-            button.disabled = product.inStockQty <= 0;
-            button.addEventListener('click', () => addToCart(product.name, Number(product.pricePerUnit), product.productId, product.unit));
-            card.appendChild(button);
+            const actions = document.createElement('div');
+            actions.className = 'product-actions';
+
+            const addOneButton = document.createElement('button');
+            addOneButton.className = 'btn-card';
+            addOneButton.type = 'button';
+            addOneButton.textContent = product.inStockQty > 0 ? 'Add one' : 'Out of Stock';
+            addOneButton.disabled = product.inStockQty <= 0;
+            addOneButton.addEventListener('click', () => addProductQuantity(product, 1));
+            actions.appendChild(addOneButton);
+
+            const addMultipleButton = document.createElement('button');
+            addMultipleButton.className = 'btn-card btn-card-secondary';
+            addMultipleButton.type = 'button';
+            addMultipleButton.textContent = 'Add multiple';
+            addMultipleButton.disabled = product.inStockQty <= 0;
+            addMultipleButton.addEventListener('click', () => openQuantityDialog(product));
+            actions.appendChild(addMultipleButton);
+            card.appendChild(actions);
 
             productGrid.appendChild(card);
         });
@@ -175,8 +215,11 @@ async function handleGuestCheckout(event) {
 
     const guestName = document.getElementById('guestName').value.trim();
     const guestPhone = document.getElementById('guestPhone').value.trim();
+    const guestEmail = document.getElementById('guestEmail').value.trim();
     const fulfillmentType = document.getElementById('fulfillmentType').value;
     const paymentMethod = document.getElementById('paymentMethod').value;
+    const deliveryAddress = document.getElementById('deliveryAddress').value.trim();
+    const deliveryNotes = document.getElementById('deliveryNotes').value.trim();
     const submitButton = event.currentTarget.querySelector('button[type="submit"]');
     submitButton.disabled = true;
 
@@ -188,7 +231,10 @@ async function handleGuestCheckout(event) {
                 order: {
                     customerName: guestName,
                     customerContact: guestPhone,
+                    customerEmail: guestEmail,
                     fulfillmentMethod: fulfillmentType,
+                    deliveryAddress: deliveryAddress,
+                    deliveryNotes: deliveryNotes,
                     paymentMethod: paymentMethod
                 },
                 items: cart.map(item => ({
@@ -224,9 +270,35 @@ async function handleGuestCheckout(event) {
     }
 }
 
+function updateDeliveryFields() {
+    const deliverySelected = document.getElementById('fulfillmentType')?.value === 'Same-Day Delivery';
+    const addressGroup = document.getElementById('delivery-address-group');
+    const notesGroup = document.getElementById('delivery-notes-group');
+    const addressInput = document.getElementById('deliveryAddress');
+
+    if (!addressGroup || !notesGroup || !addressInput) return;
+    addressGroup.hidden = !deliverySelected;
+    notesGroup.hidden = !deliverySelected;
+    addressInput.required = deliverySelected;
+    if (!deliverySelected) {
+        addressInput.value = '';
+        document.getElementById('deliveryNotes').value = '';
+    }
+}
+
 // Initialize badge count when page loads
 document.addEventListener('DOMContentLoaded', () => {
     updateCartBadge();
     renderOrderSummary();
     loadCatalog();
+    document.getElementById('fulfillmentType')?.addEventListener('change', updateDeliveryFields);
+    updateDeliveryFields();
+    document.getElementById('quantity-dialog-close')?.addEventListener('click', closeQuantityDialog);
+    document.getElementById('quantity-form')?.addEventListener('submit', event => {
+        event.preventDefault();
+        const quantity = Number(document.getElementById('quantity-input').value);
+        if (quantityProduct && Number.isInteger(quantity) && quantity > 0 && addProductQuantity(quantityProduct, quantity)) {
+            closeQuantityDialog();
+        }
+    });
 });

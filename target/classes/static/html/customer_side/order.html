@@ -62,12 +62,27 @@
                     </div>
 
                     <div class="form-group">
+                        <label for="guestEmail" class="form-label">Email Address</label>
+                        <input type="email" id="guestEmail" class="form-input" placeholder="e.g., juan@example.com">
+                    </div>
+
+                    <div class="form-group">
                         <label for="fulfillmentType" class="form-label">Fulfillment Method *</label>
                         <select id="fulfillmentType" class="form-input" required>
                             <option value="" disabled selected hidden></option>
                             <option value="Storefront Pickup">Storefront Pickup</option>
                             <option value="Same-Day Delivery">Same-Day Local Area Delivery</option>
                         </select>
+                    </div>
+
+                    <div class="form-group" id="delivery-address-group" hidden>
+                        <label for="deliveryAddress" class="form-label">Delivery Address *</label>
+                        <textarea id="deliveryAddress" class="form-input" rows="3" placeholder="House number, street, barangay, city"></textarea>
+                    </div>
+
+                    <div class="form-group" id="delivery-notes-group" hidden>
+                        <label for="deliveryNotes" class="form-label">Delivery Notes</label>
+                        <textarea id="deliveryNotes" class="form-input" rows="2" placeholder="Landmark or delivery instructions"></textarea>
                     </div>
 
                     <div class="form-group">
