@@ -54,7 +54,12 @@ function renderInventory(products) {
             <td>₱${Number(product.pricePerUnit).toFixed(2)} / ${product.unit}</td>
             <td><span class="stock-pill ${status.className}">${status.text}</span></td>
             <td class="stock-qty-value">${quantity} ${product.unit}</td>
-            <td>Product ID ${product.productId}</td>
+            <td>
+                <div class="stock-adjust">
+                    <button class="btn-restock" type="button" data-stock-adjustment="-10" data-product-id="${escapeHtml(product.productId)}" aria-label="Remove 10 ${escapeHtml(product.unit)} of ${escapeHtml(product.name)}">-10</button>
+                    <button class="btn-restock" type="button" data-stock-adjustment="10" data-product-id="${escapeHtml(product.productId)}" aria-label="Add 10 ${escapeHtml(product.unit)} of ${escapeHtml(product.name)}">+10</button>
+                </div>
+            </td>
         `;
         tableBody.appendChild(row);
     });
@@ -81,6 +86,38 @@ async function loadInventory() {
             tableBody.innerHTML = '<tr><td colspan="5">Inventory is temporarily unavailable.</td></tr>';
         }
         console.error('Unable to load admin inventory:', error);
+    }
+}
+
+function setStockAdjustmentMessage(message, isError = false) {
+    const messageElement = document.getElementById('stock-adjustment-message');
+    if (!messageElement) return;
+    messageElement.textContent = message;
+    messageElement.classList.toggle('error', isError);
+}
+
+async function adjustStock(productId, adjustment, button) {
+    const row = button.closest('tr');
+    const rowButtons = row?.querySelectorAll('[data-stock-adjustment]') ?? [];
+    rowButtons.forEach(rowButton => { rowButton.disabled = true; });
+    setStockAdjustmentMessage('');
+
+    try {
+        const response = await fetch(`/api/products/${encodeURIComponent(productId)}/stock-adjustments`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ adjustment })
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(result.error || `Stock adjustment failed: ${response.status}`);
+
+        await loadInventory();
+        setStockAdjustmentMessage(`Stock updated by ${adjustment > 0 ? '+' : ''}${adjustment}.`);
+    } catch (error) {
+        setStockAdjustmentMessage(error.message || 'Unable to update stock.', true);
+        console.error('Unable to adjust admin stock:', error);
+    } finally {
+        rowButtons.forEach(rowButton => { rowButton.disabled = false; });
     }
 }
 
@@ -181,6 +218,11 @@ function resetDemoData() {
 document.addEventListener('DOMContentLoaded', () => {
     updateAdminClock();
     setInterval(updateAdminClock, 1000);
+    document.getElementById('inventory-table-body')?.addEventListener('click', event => {
+        const button = event.target.closest('[data-stock-adjustment]');
+        if (!button) return;
+        adjustStock(Number(button.dataset.productId), Number(button.dataset.stockAdjustment), button);
+    });
     loadInventory();
     loadOrders();
     // Pick up new orders (and the stock they deduct) without a manual page reload.

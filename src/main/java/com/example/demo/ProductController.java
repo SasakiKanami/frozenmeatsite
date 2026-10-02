@@ -9,6 +9,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api")
@@ -26,6 +27,63 @@ public class ProductController {
     @GetMapping("/products")
     public List getCatalog() {
         return productStockRepository.findAll();
+    }
+
+    @PostMapping("/products/{productId}/stock-adjustments")
+    @Transactional
+    public ResponseEntity<?> adjustStock(@PathVariable Integer productId, @RequestBody AdjustStockRequest request) {
+        if (request == null || request.getAdjustment() == null
+                || (request.getAdjustment().compareTo(BigDecimal.TEN) != 0
+                && request.getAdjustment().compareTo(BigDecimal.TEN.negate()) != 0)) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Stock adjustment must be exactly 10 or -10"));
+        }
+
+        Product product = productRepository.findById(productId).orElse(null);
+        if (product == null || Boolean.TRUE.equals(product.getDeleted())) {
+            return ResponseEntity.status(404).body(Map.of("error", "Product not found"));
+        }
+
+        BigDecimal adjustment = request.getAdjustment();
+        LocalDateTime now = LocalDateTime.now();
+        if (adjustment.signum() > 0) {
+            InventoryBatch batch = new InventoryBatch();
+            batch.setProductId(productId);
+            batch.setBatchNumber("ADMIN-" + UUID.randomUUID());
+            batch.setSupplierName("Direct Meat Supplier");
+            batch.setInitialQty(adjustment);
+            batch.setRemainingQty(adjustment);
+            batch.setArrivalDate(now);
+            batch.setDeleted(false);
+            batch.setCreatedAt(now);
+            inventoryBatchRepository.save(batch);
+        } else {
+            List<InventoryBatch> batches = inventoryBatchRepository
+                    .findAvailableBatchesForUpdate(productId, BigDecimal.ZERO);
+            BigDecimal quantityToRemove = adjustment.abs();
+            BigDecimal availableQuantity = batches.stream()
+                    .map(InventoryBatch::getRemainingQty)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+            if (availableQuantity.compareTo(quantityToRemove) < 0) {
+                return ResponseEntity.status(409).body(Map.of("error", "Cannot reduce stock below zero"));
+            }
+
+            for (InventoryBatch batch : batches) {
+                if (quantityToRemove.compareTo(BigDecimal.ZERO) <= 0) {
+                    break;
+                }
+
+                BigDecimal deduction = batch.getRemainingQty().min(quantityToRemove);
+                batch.setRemainingQty(batch.getRemainingQty().subtract(deduction));
+                quantityToRemove = quantityToRemove.subtract(deduction);
+                inventoryBatchRepository.save(batch);
+            }
+        }
+
+        return ResponseEntity.ok(Map.of(
+                "message", "Stock adjusted successfully",
+                "productId", productId,
+                "adjustment", adjustment
+        ));
     }
 
     @PostMapping("/products")
@@ -88,6 +146,13 @@ public class ProductController {
 
         return ResponseEntity.status(404).body(Map.of("error", "Batch not found"));
     }
+}
+
+class AdjustStockRequest {
+    private BigDecimal adjustment;
+
+    public BigDecimal getAdjustment() { return adjustment; }
+    public void setAdjustment(BigDecimal adjustment) { this.adjustment = adjustment; }
 }
 
 class AddProductRequest {

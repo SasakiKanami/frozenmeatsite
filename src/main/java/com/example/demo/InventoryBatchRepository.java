@@ -13,7 +13,6 @@ import java.util.List;
 public interface InventoryBatchRepository extends JpaRepository<InventoryBatch, Integer> {
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query("SELECT batch FROM InventoryBatch batch WHERE batch.productId = :productId AND batch.isDeleted = false AND batch.remainingQty > :zero ORDER BY batch.arrivalDate ASC")
+    @Query("SELECT batch FROM InventoryBatch batch WHERE batch.productId = :productId AND batch.isDeleted = false AND batch.remainingQty > :zero ORDER BY batch.arrivalDate ASC, batch.id ASC")
     List<InventoryBatch> findAvailableBatchesForUpdate(@Param("productId") Integer productId, @Param("zero") BigDecimal zero);
 }
-

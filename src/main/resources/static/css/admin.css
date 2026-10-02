@@ -408,6 +408,18 @@
     gap: 0.5rem;
 }
 
+.stock-adjustment-message {
+    min-height: 1.25rem;
+    margin: -0.75rem 0 1rem;
+    color: var(--fresh-chilled-text);
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.stock-adjustment-message.error {
+    color: #dc2626;
+}
+
 .stock-qty-value {
     min-width: 46px;
     text-align: center;
