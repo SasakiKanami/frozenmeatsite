@@ -1,0 +1,203 @@
+/* ==========================================================================
+   CARNI-FLOW: AUTH PAGE (Sign In / Create Account)
+   NOTE: login.html already linked to "../../css/auth.css" in both the
+   LoginAndSignup and main-backend-test branches, but this file did not
+   actually exist in either zip. Added here so the login page isn't
+   unstyled/broken. Reuses the same CSS variables defined in styles.css
+   (--navy-deep, --glass-surface, --ice-frost, etc.) instead of redefining
+   them, same approach as admin.css.
+   ========================================================================== */
+
+.auth-hero {
+    min-height: calc(100vh - 140px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2.5rem 1.25rem;
+}
+
+.auth-wrap {
+    position: relative;
+    z-index: 2;
+    width: 100%;
+    display: flex;
+    justify-content: center;
+}
+
+.auth-card {
+    width: 100%;
+    max-width: 440px;
+    padding: 2.4rem 2.2rem;
+    text-align: center;
+}
+
+.auth-icon-wrap {
+    width: 56px;
+    height: 56px;
+    margin: 0 auto 1.1rem;
+    border-radius: 50%;
+    background: var(--fresh-chilled-bg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--ice-glacier-blue);
+}
+
+    .auth-icon-wrap .icon-svg {
+        width: 26px;
+        height: 26px;
+    }
+
+.auth-heading {
+    margin-bottom: 0.3rem;
+}
+
+.auth-card .card-sub {
+    margin-bottom: 1.6rem;
+}
+
+/* --- Sign In / Create Account Tabs --- */
+.auth-tabs {
+    display: flex;
+    gap: 0.4rem;
+    background: rgba(186, 230, 253, 0.35);
+    border-radius: 10px;
+    padding: 0.3rem;
+    margin-bottom: 1.4rem;
+}
+
+.auth-tab {
+    flex: 1;
+    background: none;
+    border: none;
+    font-family: inherit;
+    font-size: 0.88rem;
+    font-weight: 700;
+    color: var(--text-muted);
+    padding: 0.55rem 0.5rem;
+    border-radius: 7px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+    .auth-tab.active {
+        background: #ffffff;
+        color: var(--ice-glacier-blue);
+        box-shadow: 0 2px 8px rgba(12, 32, 59, 0.12);
+    }
+
+/* --- Inline alert banner --- */
+.auth-alert {
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    color: #b91c1c;
+    font-size: 0.85rem;
+    font-weight: 600;
+    padding: 0.75rem 1rem;
+    border-radius: 8px;
+    margin-bottom: 1.2rem;
+    text-align: left;
+}
+
+    .auth-alert.success {
+        background: var(--fresh-chilled-bg);
+        border-color: var(--fresh-chilled-border);
+        color: var(--ice-glacier-blue);
+    }
+
+/* --- Form layout --- */
+.auth-form {
+    text-align: left;
+}
+
+.auth-form .form-group {
+    margin-bottom: 1.1rem;
+}
+
+.password-field {
+    position: relative;
+}
+
+    .password-field .form-input {
+        padding-right: 2.6rem;
+    }
+
+.pw-toggle {
+    position: absolute;
+    top: 50%;
+    right: 0.7rem;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    padding: 0.2rem;
+}
+
+    .pw-toggle:hover {
+        color: var(--ice-glacier-blue);
+    }
+
+.field-hint {
+    font-size: 0.76rem;
+    color: var(--text-muted);
+    margin-top: 0.35rem;
+}
+
+.auth-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.3rem;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.remember-me {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    font-size: 0.85rem;
+    color: var(--text-main);
+    cursor: pointer;
+}
+
+.terms-row {
+    margin-bottom: 1.3rem;
+    font-size: 0.82rem;
+}
+
+.auth-link {
+    color: var(--ice-glacier-blue);
+    font-weight: 700;
+    font-size: 0.85rem;
+    text-decoration: none;
+}
+
+    .auth-link:hover {
+        text-decoration: underline;
+    }
+
+.guest-note {
+    margin-top: 1.4rem;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    text-align: center;
+}
+
+/* Used by login.html's back-to-catalog pill on very narrow screens */
+.hide-text {
+    display: inline;
+}
+
+@media (max-width: 420px) {
+    .auth-card {
+        padding: 1.9rem 1.4rem;
+    }
+
+    .hide-text {
+        display: none;
+    }
+}

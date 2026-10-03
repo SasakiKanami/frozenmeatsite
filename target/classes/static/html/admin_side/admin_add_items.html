@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Add Items - J&R Frozen Goods Admin Panel</title>
+    <!-- External CSS Dependencies (No internal styles or inline style attributes) -->
+    <link rel="stylesheet" href="../../css/styles.css">
+    <link rel="stylesheet" href="../../css/admin.css">
+</head>
+<body>
+
+    <!-- Top Navigation Header Bar -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="brand">
+            <span class="brand-title">J&R Frozen Goods</span>
+                <span class="brand-sub">Carni-Flow Admin Panel</span>
+            </div>
+            <nav class="nav-links">
+                <a href="../customer_side/index.html" class="nav-link">View Storefront</a>
+                <a href="admin_add_items.html" class="nav-link">Add Items</a>
+            </nav>
+        </div>
+    </nav>
+
+    <!-- Compact Admin Hero Header -->
+    <header class="admin-header">
+        <div class="admin-header-inner">
+            <div>
+                <div class="admin-eyebrow">
+                    Operations Control Center
+                </div>
+                <h1 class="admin-title">Add Stock Items</h1>
+                <p class="admin-desc">Register new inventory, specify storage categories, and set initial stock levels.</p>
+            </div>
+            <div class="admin-clock">
+                <div class="admin-clock-time" id="clock-time">--:--:-- --</div>
+                <div class="admin-clock-date" id="clock-date">Loading...</div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="container">
+
+        <!-- Add Items Admin Panel Card -->
+        <section class="admin-panel">
+            <div class="admin-panel-header">
+                <div>
+                    <h2 class="admin-panel-title">Item Registration Form</h2>
+                    <p class="admin-panel-sub">Fill in the product details below to add a new item to the Carni-Flow inventory.</p>
+                </div>
+            </div>
+
+            <!-- Item Registration Form -->
+            <form id="add-item-form">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label class="form-label" for="sku-code">Batch Number</label>
+                        <input type="text" id="sku-code" class="form-input" placeholder="e.g. BATCH-BT-001" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="product-name">Product Name</label>
+                        <input type="text" id="product-name" class="form-input" placeholder="e.g. Pork Belly Slab Cut" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="category">Category</label>
+                        <select id="category" class="form-input" required>
+                            <option value="">Select Category...</option>
+                            <option value="Pork">Pork</option>
+                            <option value="Beef">Beef</option>
+                            <option value="Poultry">Poultry</option>
+                            <option value="Processed">Processed</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label class="form-label" for="initial-qty">Initial Stock Quantity</label>
+                        <input type="number" min="0.01" step="0.01" id="initial-qty" class="form-input" placeholder="e.g. 50" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="low-stock-limit">Minimum Threshold (Alert)</label>
+                        <input type="number" min="1" id="low-stock-limit" class="form-input" value="10" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="unit-price">Price per Unit (₱)</label>
+                        <input type="number" step="0.01" min="0" id="unit-price" class="form-input" placeholder="0.00" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="unit">Selling Unit</label>
+                        <select id="unit" class="form-input" required>
+                            <option value="">Select Unit...</option>
+                            <option value="kg">Kilogram (kg)</option>
+                            <option value="pack">Pack</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label class="form-label" for="storage-zone">Storage Temperature / Zone</label>
+                        <select id="storage-zone" class="form-input">
+                            <option value="Deep Freeze">Deep Freeze (-18°C)</option>
+                            <option value="Fresh Chilled">Fresh Chilled (2°C)</option>
+                            <option value="Processed Pack">Processed Pack</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="expiration-date">Batch Expiration Date</label>
+                        <input type="date" id="expiration-date" class="form-input" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="supplier-name">Supplier</label>
+                        <input type="text" id="supplier-name" class="form-input" maxlength="100" placeholder="Direct Meat Supplier">
+                    </div>
+                </div>
+
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label class="form-label" for="product-image">Upload Product Image (optional, max 5 MB)</label>
+                        <input type="file" id="product-image" class="form-input" accept="image/jpeg,image/png,image/gif,image/webp">
+                        <p class="image-upload-status" id="image-upload-status" role="status" aria-live="polite"></p>
+                        <img class="image-upload-preview hidden" id="image-upload-preview" alt="Selected product image preview">
+                        <label class="form-label image-url-label" for="image-url">Or enter an image URL</label>
+                        <input type="text" id="image-url" class="form-input" placeholder="e.g. ../../assets/pictures/product.png">
+                    </div>
+                </div>
+
+                <div class="form-actions">
+                    <button type="button" class="btn-reset" id="btn-reset-form">
+                        Clear Form
+                    </button>
+                    <button type="submit" class="btn-restock">
+                        Add Item to Stock
+                    </button>
+                </div>
+            </form>
+        </section>
+
+        <!-- Recent Additions Table -->
+        <section class="admin-panel">
+            <div class="admin-panel-header">
+                <div>
+                    <h3 class="admin-panel-title">Session Inventory Additions</h3>
+                    <p class="admin-panel-sub">Live confirmation feed of stock items committed during this session.</p>
+                </div>
+            </div>
+
+            <div class="table-scroll">
+                <table class="admin-table">
+                    <thead>
+                        <tr>
+                            <th>Batch Ref</th>
+                            <th>Supplier</th>
+                            <th>Item Name</th>
+                            <th>Category</th>
+                            <th>Price / Unit</th>
+                            <th>Quantity</th>
+                            <th>Status</th>
+                            <th>Storage Zone</th>
+                            <th>Expiration Date</th>
+                        </tr>
+                    </thead>
+                    <tbody id="recent-items-body">
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+    </main>
+
+    <script src="../../js/csrf.js"></script>
+    <script>
+        function escapeHtml(value) {
+            return String(value ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        }
+
+        // Real-time Clock Updater
+        function updateClock() {
+            const now = new Date();
+            const timeStr = now.toLocaleTimeString('en-US', { hour12: true, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            const dateStr = now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+            
+            const timeEl = document.getElementById('clock-time');
+            const dateEl = document.getElementById('clock-date');
+            
+            if (timeEl) timeEl.textContent = timeStr;
+            if (dateEl) dateEl.textContent = dateStr;
+        }
+        setInterval(updateClock, 1000);
+        updateClock();
+
+        // Reset Button Action
+        document.getElementById('btn-reset-form').addEventListener('click', function() {
+            document.getElementById('add-item-form').reset();
+        });
+
+        let imagePreviewUrl = null;
+        const imageInput = document.getElementById('product-image');
+        const imagePreview = document.getElementById('image-upload-preview');
+        const imageUploadStatus = document.getElementById('image-upload-status');
+        const addItemForm = document.getElementById('add-item-form');
+        const expirationDateInput = document.getElementById('expiration-date');
+        const currentDate = new Date();
+        expirationDateInput.min = [
+            currentDate.getFullYear(),
+            String(currentDate.getMonth() + 1).padStart(2, '0'),
+            String(currentDate.getDate()).padStart(2, '0')
+        ].join('-');
+
+        imageInput.addEventListener('change', function() {
+            if (imagePreviewUrl) URL.revokeObjectURL(imagePreviewUrl);
+            imagePreviewUrl = null;
+            imagePreview.removeAttribute('src');
+            imagePreview.classList.add('hidden');
+            imageUploadStatus.textContent = '';
+
+            const file = imageInput.files[0];
+            if (!file) return;
+            if (file.size > 5 * 1024 * 1024) {
+                imageInput.setCustomValidity('Choose an image that is 5 MB or smaller.');
+                imageInput.reportValidity();
+                imageInput.setCustomValidity('');
+                imageInput.value = '';
+                return;
+            }
+            imagePreviewUrl = URL.createObjectURL(file);
+            imagePreview.src = imagePreviewUrl;
+            imagePreview.classList.remove('hidden');
+        });
+
+        addItemForm.addEventListener('reset', function() {
+            imageUploadStatus.textContent = '';
+            imagePreview.classList.add('hidden');
+            imagePreview.removeAttribute('src');
+            if (imagePreviewUrl) URL.revokeObjectURL(imagePreviewUrl);
+            imagePreviewUrl = null;
+        });
+
+        // Form Submit Handler
+        addItemForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const sku = document.getElementById('sku-code').value.trim();
+            const name = document.getElementById('product-name').value.trim();
+            const category = document.getElementById('category').value;
+            const price = parseFloat(document.getElementById('unit-price').value).toFixed(2);
+            const qty = parseFloat(document.getElementById('initial-qty').value);
+            const lowLimit = parseFloat(document.getElementById('low-stock-limit').value);
+            const unit = document.getElementById('unit').value;
+            const zone = document.getElementById('storage-zone').value;
+            const expirationDate = expirationDateInput.value || null;
+            const supplierName = document.getElementById('supplier-name').value.trim();
+            let imageUrl = document.getElementById('image-url').value.trim() || null;
+            const imageFile = imageInput.files[0];
+
+            const submitButton = e.currentTarget.querySelector('button[type="submit"]');
+            submitButton.disabled = true;
+
+            try {
+                if (imageFile) {
+                    imageUploadStatus.textContent = 'Uploading image to Cloudinary...';
+                    const formData = new FormData();
+                    formData.append('file', imageFile);
+                    const uploadResponse = await fetch('/api/products/images', {
+                        method: 'POST',
+                        headers: csrfHeaders(),
+                        body: formData
+                    });
+                    const uploadResult = await uploadResponse.json();
+                    if (!uploadResponse.ok) {
+                        throw new Error(uploadResult.error || 'Unable to upload product image');
+                    }
+                    imageUrl = uploadResult.imageUrl;
+                    document.getElementById('image-url').value = imageUrl;
+                    imageInput.value = '';
+                    imageUploadStatus.textContent = 'Image uploaded. Saving product...';
+                }
+
+                const response = await fetch('/api/products', {
+                    method: 'POST',
+                    headers: csrfHeaders({ 'Content-Type': 'application/json' }),
+                    body: JSON.stringify({
+                        name: name,
+                        category: category,
+                        temperatureTier: zone,
+                        unit: unit,
+                        pricePerUnit: Number(price),
+                        imageUrl: imageUrl,
+                        reorderLevel: lowLimit,
+                        expirationDate: expirationDate,
+                        batchNumber: sku,
+                        supplierName: supplierName || null,
+                        initialQty: qty
+                    })
+                });
+                const result = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(result.error || 'Unable to add product');
+                }
+
+                // Determine stock status pill class
+                let statusClass = 'in-stock';
+                let statusText = 'IN STOCK';
+
+                if (qty <= lowLimit) {
+                    statusClass = 'low-stock';
+                    statusText = 'LOW STOCK';
+                }
+
+                // Append the confirmed product to the additions feed
+                const tbody = document.getElementById('recent-items-body');
+                const newRow = document.createElement('tr');
+                newRow.innerHTML = `
+                <td class="ref-pill">${escapeHtml(sku)}</td>
+                <td class="cell-product-cat">${escapeHtml(supplierName || 'Direct Meat Supplier')}</td>
+                <td class="cell-product-name">${escapeHtml(name)}</td>
+                <td class="cell-product-cat">${escapeHtml(category)}</td>
+                <td>₱${price}</td>
+                <td class="stock-qty-value">${qty} ${unit}</td>
+                <td><span class="stock-pill ${statusClass}">${statusText}</span></td>
+                <td class="cell-product-cat">${zone}</td>
+                <td class="cell-product-cat">${escapeHtml(expirationDate || '—')}</td>
+            `;
+
+                tbody.insertBefore(newRow, tbody.firstChild);
+                alert('Product and inventory batch added successfully.');
+
+                // Reset form upon successful submission
+                document.getElementById('add-item-form').reset();
+            } catch (error) {
+                imageUploadStatus.textContent = error.message;
+                alert(error.message);
+            } finally {
+                submitButton.disabled = false;
+            }
+        });
+    </script>
+</body>
+</html>
