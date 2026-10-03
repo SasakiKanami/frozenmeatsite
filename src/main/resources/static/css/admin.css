@@ -440,6 +440,34 @@
     color: #dc2626;
 }
 
+.inventory-search-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    max-width: 420px;
+    margin-bottom: 1rem;
+}
+
+.inventory-search-wrap .form-label {
+    margin-bottom: 0;
+}
+
+.inventory-search {
+    width: 100%;
+    border: 1px solid var(--glass-border-ice);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.9);
+    color: var(--navy-deep);
+    padding: 0.65rem 0.8rem;
+    font: inherit;
+}
+
+.inventory-no-results {
+    color: var(--text-muted) !important;
+    text-align: center;
+    padding: 1.5rem !important;
+}
+
 .stock-qty-value {
     min-width: 46px;
     text-align: center;

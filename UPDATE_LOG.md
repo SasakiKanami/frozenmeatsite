@@ -7,3 +7,4 @@
 - Widened the admin content area to 1360px without changing the storefront or header width.
 - Confirmed the add-product image field accepts a URL or path only. File upload is not implemented and is deferred for later.
 - Reviewed how the storefront catalog reads product and stock data from PostgreSQL and documented the existing setup/run flow in chat.
+- Added live inventory search by product name, category, or temperature tier in the admin dashboard.

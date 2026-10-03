@@ -1,3 +1,5 @@
+let inventoryProducts = [];
+
 function updateAdminClock() {
     const now = new Date();
     const time = now.toLocaleTimeString('en-US', {
@@ -38,6 +40,11 @@ function renderInventory(products) {
     tableBody.innerHTML = '';
     let lowStockCount = 0;
     const lowStockProducts = [];
+    const searchTerm = document.getElementById('inventory-search')?.value.trim().toLocaleLowerCase() || '';
+    const visibleProducts = products.filter(product =>
+        [product.name, product.category, product.temperatureTier]
+            .some(value => String(value ?? '').toLocaleLowerCase().includes(searchTerm))
+    );
 
     products.forEach(product => {
         const quantity = Number(product.inStockQty);
@@ -47,7 +54,11 @@ function renderInventory(products) {
             lowStockCount += 1;
             lowStockProducts.push(`${product.name} (${quantity} ${product.unit} left)`);
         }
+    });
 
+    visibleProducts.forEach(product => {
+        const quantity = Number(product.inStockQty);
+        const status = getStockStatus(quantity, Number(product.reorderLevel ?? 5));
         const row = document.createElement('tr');
         row.innerHTML = `
             <td class="cell-product-name">${escapeHtml(product.name)}</td>
@@ -77,6 +88,18 @@ function renderInventory(products) {
         tableBody.appendChild(row);
     });
 
+    if (visibleProducts.length === 0) {
+        const row = document.createElement('tr');
+        const message = document.createElement('td');
+        message.colSpan = 7;
+        message.className = 'inventory-no-results';
+        message.textContent = searchTerm
+            ? `No inventory items match "${document.getElementById('inventory-search').value.trim()}".`
+            : 'No inventory items found.';
+        row.appendChild(message);
+        tableBody.appendChild(row);
+    }
+
     document.getElementById('stat-catalog').textContent = products.length;
     document.getElementById('stat-lowstock').textContent = lowStockCount;
 
@@ -93,7 +116,8 @@ async function loadInventory() {
     try {
         const response = await fetch('/api/products');
         if (!response.ok) throw new Error(`Inventory request failed: ${response.status}`);
-        renderInventory(await response.json());
+        inventoryProducts = await response.json();
+        renderInventory(inventoryProducts);
     } catch (error) {
         if (tableBody) {
             tableBody.innerHTML = '<tr><td colspan="7">Inventory is temporarily unavailable.</td></tr>';
@@ -295,6 +319,9 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             adjustStock(Number(button.dataset.productId), Number(button.dataset.stockAdjustment), button);
         }
+    });
+    document.getElementById('inventory-search')?.addEventListener('input', () => {
+        renderInventory(inventoryProducts);
     });
     ['orders-table-body', 'account-orders-table-body'].forEach(bodyId => {
         document.getElementById(bodyId)?.addEventListener('change', event => {
