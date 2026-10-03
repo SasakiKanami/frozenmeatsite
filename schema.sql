@@ -4,6 +4,7 @@
 DROP VIEW IF EXISTS view_catalog_live_stock CASCADE;
 DROP TABLE IF EXISTS archived_batches CASCADE;
 DROP TABLE IF EXISTS archived_orders CASCADE;
+DROP TABLE IF EXISTS password_reset_tokens CASCADE;
 DROP TABLE IF EXISTS batch_deductions CASCADE;
 DROP TABLE IF EXISTS order_items CASCADE;
 DROP TABLE IF EXISTS orders CASCADE;
@@ -26,6 +27,15 @@ CREATE TABLE users (
     is_deleted BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     deleted_at TIMESTAMP NULL
+);
+
+CREATE TABLE password_reset_tokens (
+    id SERIAL PRIMARY KEY,
+    user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    token_hash CHAR(64) UNIQUE NOT NULL,
+    expires_at TIMESTAMP NOT NULL,
+    consumed_at TIMESTAMP NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- 2. Products Table (Includes image_url for admin uploads)
@@ -75,7 +85,7 @@ CREATE TABLE orders (
     payment_method VARCHAR(50) NOT NULL CHECK (payment_method IN ('Cash on Pickup / Delivery', 'GCash Transfer')),
     payment_status VARCHAR(20) NOT NULL DEFAULT 'unpaid' CHECK (payment_status IN ('unpaid', 'pending', 'paid', 'failed')),
     total_amount NUMERIC(10, 2) NOT NULL DEFAULT 0.00 CHECK (total_amount >= 0),
-    order_status VARCHAR(20) NOT NULL DEFAULT 'completed' CHECK (order_status IN ('pending', 'completed', 'cancelled')),
+    order_status VARCHAR(20) NOT NULL DEFAULT 'pending' CHECK (order_status IN ('pending', 'completed', 'cancelled')),
     created_by_user_id INT NULL REFERENCES users(id),
     is_deleted BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

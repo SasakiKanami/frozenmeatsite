@@ -5,8 +5,11 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.times;
 
 import java.util.Optional;
+import java.math.BigDecimal;
+import java.util.List;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -23,6 +26,9 @@ class OrderControllerTest {
     @Mock private OrderItemRepository orderItemRepository;
     @Mock private ProductRepository productRepository;
     @Mock private UserRepository userRepository;
+    @Mock private BatchDeductionRepository batchDeductionRepository;
+    @Mock private InventoryBatchRepository batchRepository;
+    @Mock private ArchivedOrderRepository archivedOrderRepository;
 
     @InjectMocks
     private OrderController controller;
@@ -30,7 +36,7 @@ class OrderControllerTest {
     @Test
     void updatesPaymentStatusToPaid() {
         Order order = activeOrder();
-        when(orderRepository.findById(12)).thenReturn(Optional.of(order));
+        when(orderRepository.findByIdForUpdate(12)).thenReturn(Optional.of(order));
         PaymentStatusRequest request = request("paid");
 
         ResponseEntity<?> response = controller.updatePaymentStatus(12, request);
@@ -45,13 +51,13 @@ class OrderControllerTest {
         ResponseEntity<?> response = controller.updatePaymentStatus(12, request("pending"));
 
         assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
-        verify(orderRepository, never()).findById(12);
+        verify(orderRepository, never()).findByIdForUpdate(12);
         verify(orderRepository, never()).save(any(Order.class));
     }
 
     @Test
     void returnsNotFoundForMissingOrder() {
-        when(orderRepository.findById(12)).thenReturn(Optional.empty());
+        when(orderRepository.findByIdForUpdate(12)).thenReturn(Optional.empty());
 
         ResponseEntity<?> response = controller.updatePaymentStatus(12, request("unpaid"));
 
@@ -59,16 +65,80 @@ class OrderControllerTest {
         verify(orderRepository, never()).save(any(Order.class));
     }
 
+    @Test
+    void cancellingUnpaidOrderRestoresItsRecordedBatchQuantitiesOnlyOnce() {
+        Order order = activeOrder();
+        when(orderRepository.findByIdForUpdate(12)).thenReturn(Optional.of(order));
+        OrderItem item = new OrderItem();
+        item.setId(22);
+        when(orderItemRepository.findByOrderId(12)).thenReturn(List.of(item));
+        BatchDeduction deduction = new BatchDeduction();
+        deduction.setBatchId(31);
+        deduction.setOrderItemId(22);
+        deduction.setDeductedQty(new BigDecimal("2.00"));
+        when(batchDeductionRepository.findByOrderItemIdIn(List.of(22))).thenReturn(List.of(deduction));
+        InventoryBatch batch = new InventoryBatch();
+        batch.setId(31);
+        batch.setRemainingQty(new BigDecimal("3.00"));
+        when(batchRepository.findByIdForUpdate(31)).thenReturn(Optional.of(batch));
+
+        ResponseEntity<?> first = controller.updateOrderStatus(12, statusRequest("cancelled"));
+        ResponseEntity<?> repeated = controller.updateOrderStatus(12, statusRequest("cancelled"));
+
+        assertEquals(HttpStatus.OK, first.getStatusCode());
+        assertEquals(HttpStatus.OK, repeated.getStatusCode());
+        assertEquals("cancelled", order.getOrderStatus());
+        assertEquals(new BigDecimal("5.00"), batch.getRemainingQty());
+        verify(batchRepository, times(1)).save(batch);
+    }
+
+    @Test
+    void paidOrderCannotBeCancelled() {
+        Order order = activeOrder();
+        order.setPaymentStatus("paid");
+        when(orderRepository.findByIdForUpdate(12)).thenReturn(Optional.of(order));
+
+        ResponseEntity<?> response = controller.updateOrderStatus(12, statusRequest("cancelled"));
+
+        assertEquals(HttpStatus.CONFLICT, response.getStatusCode());
+        verify(batchDeductionRepository, never()).findByOrderItemIdIn(any());
+        verify(orderRepository, never()).save(order);
+    }
+
+    @Test
+    void completedOrderIsSoftArchivedAndRetainedForAudit() {
+        Order order = activeOrder();
+        order.setOrderStatus("completed");
+        order.setReferenceId("CF-ARCHIVE-12");
+        order.setCustomerName("Archive Customer");
+        order.setTotalAmount(new BigDecimal("20.00"));
+        when(orderRepository.findByIdForUpdate(12)).thenReturn(Optional.of(order));
+
+        ResponseEntity<?> response = controller.archiveOrder(12);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertEquals(Boolean.TRUE, order.getDeleted());
+        verify(archivedOrderRepository).save(any(ArchivedOrder.class));
+        verify(orderRepository).save(order);
+    }
+
     private Order activeOrder() {
         Order order = new Order();
         order.setId(12);
         order.setPaymentStatus("unpaid");
+        order.setOrderStatus("pending");
         return order;
     }
 
     private PaymentStatusRequest request(String paymentStatus) {
         PaymentStatusRequest request = new PaymentStatusRequest();
         request.setPaymentStatus(paymentStatus);
+        return request;
+    }
+
+    private OrderStatusRequest statusRequest(String orderStatus) {
+        OrderStatusRequest request = new OrderStatusRequest();
+        request.setOrderStatus(orderStatus);
         return request;
     }
 }

@@ -1,11 +1,13 @@
 package com.example.demo;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
+import jakarta.annotation.PostConstruct;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.ArrayList;
@@ -25,10 +27,48 @@ public class CheckoutController {
     @Autowired private InventoryBatchRepository batchRepository;
     @Autowired private ProductRepository productRepository;
     @Autowired private UserRepository userRepository;
+    @Value("${app.delivery.fee:0.00}") private BigDecimal configuredDeliveryFee = new BigDecimal("0.00");
+
+    @PostConstruct
+    void validateDeliveryFee() {
+        if (configuredDeliveryFee.signum() < 0
+                || configuredDeliveryFee.compareTo(new BigDecimal("99999999.99")) > 0) {
+            throw new IllegalStateException("DELIVERY_FEE must be between 0 and 99999999.99");
+        }
+    }
 
     @PostMapping("/orders")
     @Transactional
     public ResponseEntity<?> processCheckout(@RequestBody CheckoutRequest request, Authentication authentication) {
+        return createOrder(request, authentication, false);
+    }
+
+    @PostMapping("/admin/orders")
+    @Transactional
+    public ResponseEntity<?> createWalkInOrder(@RequestBody CheckoutRequest request, Authentication authentication) {
+        if (request == null || request.getOrder() == null) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Walk-in order details are required"));
+        }
+        Order submittedOrder = request.getOrder();
+        if (isBlank(submittedOrder.getCustomerName())) submittedOrder.setCustomerName("Walk-in Customer");
+        if (isBlank(submittedOrder.getCustomerContact())) submittedOrder.setCustomerContact("N/A");
+        submittedOrder.setCustomerEmail(null);
+        submittedOrder.setCustomerUserId(null);
+        submittedOrder.setFulfillmentMethod("Storefront Pickup");
+        submittedOrder.setDeliveryAddress(null);
+        submittedOrder.setDeliveryNotes(null);
+        return createOrder(request, authentication, true);
+    }
+
+    @GetMapping("/checkout-settings")
+    public Map<String, BigDecimal> checkoutSettings() {
+        return Map.of("deliveryFee", configuredDeliveryFee.setScale(2, RoundingMode.HALF_UP));
+    }
+
+    private ResponseEntity<?> createOrder(
+            CheckoutRequest request,
+            Authentication authentication,
+            boolean walkIn) {
         if (request == null || request.getOrder() == null || request.getItems() == null || request.getItems().isEmpty()) {
             return ResponseEntity.badRequest().body(Map.of("error", "Customer details and at least one item are required"));
         }
@@ -38,6 +78,13 @@ public class CheckoutController {
                 || !List.of("Storefront Pickup", "Same-Day Delivery").contains(submittedOrder.getFulfillmentMethod())
                 || !List.of("Cash on Pickup / Delivery", "GCash Transfer").contains(submittedOrder.getPaymentMethod())) {
             return ResponseEntity.badRequest().body(Map.of("error", "Customer name, contact, fulfillment, and payment details are required"));
+        }
+        if (submittedOrder.getCustomerName().trim().length() > 100
+                || submittedOrder.getCustomerContact().trim().length() > 30
+                || length(submittedOrder.getCustomerEmail()) > 255
+                || length(submittedOrder.getDeliveryAddress()) > 4000
+                || length(submittedOrder.getDeliveryNotes()) > 2000) {
+            return ResponseEntity.badRequest().body(Map.of("error", "One or more order fields exceed the allowed length"));
         }
         if ("Same-Day Delivery".equals(submittedOrder.getFulfillmentMethod()) && isBlank(submittedOrder.getDeliveryAddress())) {
             return ResponseEntity.badRequest().body(Map.of("error", "A delivery address is required for same-day delivery"));
@@ -59,7 +106,7 @@ public class CheckoutController {
             if (product == null) {
                 product = productRepository.findById(submittedItem.getProductId()).orElse(null);
                 if (product == null || Boolean.TRUE.equals(product.getDeleted())
-                        || !Boolean.TRUE.equals(product.getVisible())) {
+                        || (!walkIn && !Boolean.TRUE.equals(product.getVisible()))) {
                     return ResponseEntity.badRequest().body(Map.of("error", "A requested product is unavailable"));
                 }
                 products.put(product.getId(), product);
@@ -94,22 +141,30 @@ public class CheckoutController {
 
         Order order = new Order();
         order.setReferenceId("CF-" + UUID.randomUUID().toString().replace("-", ""));
-        order.setOrderSource("online");
+        order.setOrderSource(walkIn ? "walk_in" : "online");
         order.setCustomerName(submittedOrder.getCustomerName().trim());
         order.setCustomerContact(submittedOrder.getCustomerContact().trim());
         order.setCustomerEmail(blankToNull(submittedOrder.getCustomerEmail()));
         if (authentication != null && authentication.isAuthenticated()
                 && !"anonymousUser".equals(authentication.getPrincipal())) {
             User signedInUser = userRepository.findByUsername(authentication.getName());
-            order.setCustomerUserId(signedInUser == null ? null : signedInUser.getId());
+            if (walkIn) {
+                order.setCreatedByUserId(signedInUser == null ? null : signedInUser.getId());
+            } else {
+                order.setCustomerUserId(signedInUser == null ? null : signedInUser.getId());
+            }
         }
         order.setFulfillmentMethod(submittedOrder.getFulfillmentMethod());
         order.setDeliveryAddress(blankToNull(submittedOrder.getDeliveryAddress()));
         order.setDeliveryNotes(blankToNull(submittedOrder.getDeliveryNotes()));
-        order.setDeliveryFee(BigDecimal.ZERO.setScale(2));
+        BigDecimal deliveryFee = "Same-Day Delivery".equals(submittedOrder.getFulfillmentMethod())
+                ? configuredDeliveryFee.setScale(2, RoundingMode.HALF_UP)
+                : BigDecimal.ZERO.setScale(2);
+        order.setDeliveryFee(deliveryFee);
         order.setPaymentMethod(submittedOrder.getPaymentMethod());
         order.setPaymentStatus("unpaid");
-        order.setTotalAmount(total);
+        order.setOrderStatus("pending");
+        order.setTotalAmount(total.add(deliveryFee));
         Order savedOrder = orderRepository.save(order);
 
         for (OrderItem item : orderItems) {
@@ -137,12 +192,17 @@ public class CheckoutController {
                 "message", "Checkout successful",
                 "orderId", savedOrder.getId(),
                 "referenceId", savedOrder.getReferenceId(),
-                "totalAmount", total
+                "deliveryFee", deliveryFee,
+                "totalAmount", savedOrder.getTotalAmount()
         ));
     }
 
     private boolean isBlank(String value) {
         return value == null || value.isBlank();
+    }
+
+    private int length(String value) {
+        return value == null ? 0 : value.length();
     }
 
     private String blankToNull(String value) {

@@ -4,9 +4,13 @@ function switchAuthTab(tab) {
     const signupTab = document.getElementById('tab-signup');
     const loginForm = document.getElementById('login-form');
     const signupForm = document.getElementById('signup-form');
+    const resetPanel = document.getElementById('password-reset-panel');
+    const tabs = document.querySelector('.auth-tabs');
 
     const isLogin = tab === 'login';
 
+    tabs.classList.remove('hidden');
+    resetPanel.classList.add('hidden');
     loginTab.classList.toggle('active', isLogin);
     signupTab.classList.toggle('active', !isLogin);
     loginTab.setAttribute('aria-selected', isLogin);
@@ -14,6 +18,7 @@ function switchAuthTab(tab) {
 
     loginForm.classList.toggle('hidden', !isLogin);
     signupForm.classList.toggle('hidden', isLogin);
+    document.querySelector('.guest-note').classList.remove('hidden');
 
     clearAlert();
 }
@@ -29,6 +34,17 @@ function showAlert(message, type) {
 function clearAlert() {
     const alertBox = document.getElementById('auth-alert');
     alertBox.classList.add('hidden');
+}
+
+function showPasswordResetPanel(completion) {
+    document.querySelector('.auth-tabs').classList.add('hidden');
+    document.getElementById('login-form').classList.add('hidden');
+    document.getElementById('signup-form').classList.add('hidden');
+    document.getElementById('password-reset-panel').classList.remove('hidden');
+    document.getElementById('password-reset-request-form').classList.toggle('hidden', completion);
+    document.getElementById('password-reset-complete-form').classList.toggle('hidden', !completion);
+    document.querySelector('.guest-note').classList.add('hidden');
+    clearAlert();
 }
 
 // 3. Password show/hide toggles
@@ -160,6 +176,69 @@ document.addEventListener('DOMContentLoaded', () => {
 
     document.getElementById('forgot-link').addEventListener('click', (e) => {
         e.preventDefault();
-        showAlert('Password reset is not available yet. Please contact an administrator for help.');
+        showPasswordResetPanel(false);
     });
+    document.getElementById('back-to-login').addEventListener('click', () => switchAuthTab('login'));
+
+    document.getElementById('password-reset-request-form').addEventListener('submit', async event => {
+        event.preventDefault();
+        clearAlert();
+        const button = event.currentTarget.querySelector('button[type="submit"]');
+        button.disabled = true;
+        try {
+            const response = await fetch('/api/auth/password-reset-requests', {
+                method: 'POST',
+                headers: csrfHeaders({ 'Content-Type': 'application/json' }),
+                body: JSON.stringify({ email: document.getElementById('reset-email').value.trim() })
+            });
+            const result = await response.json().catch(() => ({}));
+            if (!response.ok) throw new Error(result.error || `Reset request failed: ${response.status}`);
+            showAlert(result.message || 'If an account exists for that email, password reset instructions will be sent.', 'success');
+        } catch (error) {
+            showAlert(error.message || 'Unable to request a password reset.');
+            console.error('Unable to request password reset:', error);
+        } finally {
+            button.disabled = false;
+        }
+    });
+
+    document.getElementById('password-reset-complete-form').addEventListener('submit', async event => {
+        event.preventDefault();
+        clearAlert();
+        const password = document.getElementById('reset-password').value;
+        const confirmation = document.getElementById('reset-password-confirm').value;
+        if (password.length < 8 || password.length > 72) {
+            showAlert('Password must be between 8 and 72 characters.');
+            return;
+        }
+        if (password !== confirmation) {
+            showAlert('Passwords do not match.');
+            return;
+        }
+        const button = event.currentTarget.querySelector('button[type="submit"]');
+        button.disabled = true;
+        try {
+            const response = await fetch('/api/auth/password-resets', {
+                method: 'POST',
+                headers: csrfHeaders({ 'Content-Type': 'application/json' }),
+                body: JSON.stringify({
+                    token: new URLSearchParams(window.location.search).get('resetToken'),
+                    password
+                })
+            });
+            const result = await response.json().catch(() => ({}));
+            if (!response.ok) throw new Error(result.error || `Password reset failed: ${response.status}`);
+            window.history.replaceState({}, document.title, window.location.pathname);
+            switchAuthTab('login');
+            showAlert(result.message || 'Password updated. You can now sign in.', 'success');
+        } catch (error) {
+            showAlert(error.message || 'Unable to reset your password.');
+            console.error('Unable to reset password:', error);
+        } finally {
+            button.disabled = false;
+        }
+    });
+
+    const resetToken = new URLSearchParams(window.location.search).get('resetToken');
+    if (resetToken) showPasswordResetPanel(true);
 });

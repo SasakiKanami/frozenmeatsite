@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 
 import java.math.BigDecimal;
 import java.util.UUID;
@@ -40,6 +41,9 @@ class CustomerOrderSecurityTest {
         User customer = createCustomer(customerUsername);
         User otherCustomer = createCustomer(otherUsername);
         Order ownOrder = createOrder(customer, "CF-OWN-" + UUID.randomUUID());
+        Order paidOrder = createOrder(customer, "CF-PAID-" + UUID.randomUUID());
+        paidOrder.setPaymentStatus("paid");
+        orderRepository.save(paidOrder);
         createOrder(otherCustomer, "CF-OTHER-" + UUID.randomUUID());
 
         MvcResult csrfResult = mockMvc.perform(get("/html/login/login.html"))
@@ -67,18 +71,42 @@ class CustomerOrderSecurityTest {
                 .andReturn();
         mockMvc.perform(get("/api/admin/products").session(session))
                 .andExpect(status().isForbidden());
+        mockMvc.perform(get("/api/account/profile").session(session))
+                .andExpect(status().isForbidden());
         JsonNode orders = objectMapper.readTree(accountOrders.getResponse().getContentAsString());
-        assertEquals(1, orders.size());
+        assertEquals(2, orders.size());
         String resultJson = orders.toString();
         assertTrue(resultJson.contains(ownOrder.getReferenceId()));
+        assertTrue(resultJson.contains(paidOrder.getReferenceId()));
         assertTrue(resultJson.contains("\"orderStatus\":\"completed\""));
         assertTrue(resultJson.contains("\"paymentStatus\":\"unpaid\""));
         assertTrue(!resultJson.contains("CF-OTHER-"));
+
+        MvcResult profileResult = mockMvc.perform(get("/api/account/profile").session(session))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.email").value(customer.getEmail()))
+                .andReturn();
+        var profileCsrf = profileResult.getResponse().getCookie("XSRF-TOKEN");
+        assertNotNull(profileCsrf);
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put("/api/account/profile")
+                        .session(session)
+                        .cookie(profileCsrf)
+                        .header("X-XSRF-TOKEN", profileCsrf.getValue())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"fullName":"Updated Customer","phone":"09171112222",
+                                 "addressLine":"10 Main Street","city":"Caloocan","landmark":"Near the market"}
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.fullName").value("Updated Customer"))
+                .andExpect(jsonPath("$.city").value("Caloocan"));
     }
 
     @Test
     void customerOrderAndAdminOrderEndpointsRequireTheirRoles() throws Exception {
         mockMvc.perform(get("/api/account/orders"))
+                .andExpect(status().isUnauthorized());
+        mockMvc.perform(get("/api/account/profile"))
                 .andExpect(status().isUnauthorized());
         mockMvc.perform(get("/api/orders"))
                 .andExpect(status().isUnauthorized());

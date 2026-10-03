@@ -18,6 +18,10 @@ public interface InventoryBatchRepository extends JpaRepository<InventoryBatch, 
     Optional<InventoryBatch> findByIdAndProductId(Integer id, Integer productId);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT batch FROM InventoryBatch batch WHERE batch.id = :batchId")
+    Optional<InventoryBatch> findByIdForUpdate(@Param("batchId") Integer batchId);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT batch FROM InventoryBatch batch WHERE batch.productId = :productId AND batch.isDeleted = false AND batch.remainingQty > :zero AND (batch.expirationDate IS NULL OR batch.expirationDate >= CURRENT_DATE) ORDER BY batch.arrivalDate ASC, batch.id ASC")
     List<InventoryBatch> findUnexpiredAvailableBatchesForUpdate(
             @Param("productId") Integer productId,

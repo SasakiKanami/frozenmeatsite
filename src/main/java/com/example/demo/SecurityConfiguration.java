@@ -51,11 +51,16 @@ public class SecurityConfiguration {
                         .csrfTokenRepository(csrfTokenRepository)
                         .csrfTokenRequestHandler(new CsrfTokenRequestAttributeHandler()))
                 .authorizeHttpRequests(authorize -> authorize
-                        .requestMatchers("/api/auth/signup", "/api/auth/login", "/api/auth/me").permitAll()
+                        .requestMatchers(
+                                "/api/auth/signup", "/api/auth/login", "/api/auth/me",
+                                "/api/auth/password-reset-requests", "/api/auth/password-resets").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/checkout-settings").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/products").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/orders").hasAnyRole("ADMIN", "CASHIER")
-                        .requestMatchers("/api/orders/*/payment-status").hasAnyRole("ADMIN", "CASHIER")
+                        .requestMatchers(HttpMethod.PUT, "/api/orders/*/payment-status",
+                                "/api/orders/*/status", "/api/orders/*/archive").hasAnyRole("ADMIN", "CASHIER")
                         .requestMatchers("/api/account/orders").hasRole("CUSTOMER")
+                        .requestMatchers("/api/account/profile").hasRole("CUSTOMER")
                         .requestMatchers(HttpMethod.POST, "/api/orders").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/admin/products", "/api/admin/products/*")
                         .hasAnyRole("ADMIN", "CASHIER")
@@ -63,11 +68,13 @@ public class SecurityConfiguration {
                         .hasAnyRole("ADMIN", "CASHIER")
                         .requestMatchers(HttpMethod.PUT, "/api/admin/products/*/batches/*/expiration")
                         .hasAnyRole("ADMIN", "CASHIER")
+                        .requestMatchers(HttpMethod.POST, "/api/admin/orders").hasAnyRole("ADMIN", "CASHIER")
                         .requestMatchers("/api/admin/**", "/api/products/*/visibility").hasRole("ADMIN")
                         .requestMatchers("/api/products/images", "/api/products", "/api/inventory/**")
                         .hasAnyRole("ADMIN", "CASHIER")
                         .requestMatchers(HttpMethod.POST, "/api/auth/logout").authenticated()
                         .requestMatchers("/html/admin_side/**").hasAnyRole("ADMIN", "CASHIER")
+                        .requestMatchers("/html/customer_side/profile.html").hasRole("CUSTOMER")
                         .requestMatchers("/api/**").authenticated()
                         .anyRequest().permitAll())
                 .formLogin(form -> form.disable())

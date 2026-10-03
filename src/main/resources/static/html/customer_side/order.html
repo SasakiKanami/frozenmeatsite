@@ -43,12 +43,13 @@
                     <span>Total:</span>
                     <strong id="cart-total-price" class="total-highlight">₱0.00</strong>
                 </div>
+                <p class="card-sub" id="delivery-fee-preview">Local delivery fee: ₱0.00</p>
             </div>
 
             <!-- Right Box: Guest Information -->
             <div class="frost-panel">
                 <h2 class="card-heading">Customer Information</h2>
-                <p class="card-sub">Fast guest order. No account registration needed.</p>
+                <p class="card-sub">Guest checkout is available. Signed-in customers can save their contact and delivery details in My Profile.</p>
 
                 <form onsubmit="handleGuestCheckout(event)">
                     <div class="form-group">
@@ -116,6 +117,7 @@
                 <div class="receipt-line"><span>Contact:</span> <span id="conf-phone">---</span></div>
                 <div class="receipt-line"><span>Fulfillment:</span> <span id="conf-fulfillment">---</span></div>
                 <div class="receipt-line"><span>Payment:</span> <span id="conf-payment">---</span></div>
+                <div class="receipt-line"><span>Delivery fee:</span> <span id="conf-delivery-fee">₱0.00</span></div>
                 <div class="receipt-line total-line"><span>Total Due:</span> <strong id="conf-total">₱0.00</strong></div>
             </div>
 

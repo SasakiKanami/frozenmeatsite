@@ -20,6 +20,8 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.time.LocalDateTime;
+import org.springframework.http.HttpStatus;
 
 /**
  * Read side of the orders feature. POST /api/orders (checkout) lives in CheckoutController;
@@ -33,6 +35,9 @@ public class OrderController {
     @Autowired private OrderItemRepository orderItemRepository;
     @Autowired private ProductRepository productRepository;
     @Autowired private UserRepository userRepository;
+    @Autowired private BatchDeductionRepository batchDeductionRepository;
+    @Autowired private InventoryBatchRepository batchRepository;
+    @Autowired private ArchivedOrderRepository archivedOrderRepository;
 
     // Newest first. Guest orders have customerUserId == null; registered-account orders carry the user's id.
     @GetMapping("/orders")
@@ -56,9 +61,6 @@ public class OrderController {
         }
         List<Order> orders = orderRepository.findByCustomerUserIdOrderByIdDesc(user.getId()).stream()
                 .filter(order -> !Boolean.TRUE.equals(order.getDeleted()))
-                .filter(order -> !"cancelled".equalsIgnoreCase(order.getOrderStatus()))
-                .filter(order -> !"paid".equalsIgnoreCase(order.getPaymentStatus())
-                        || "pending".equalsIgnoreCase(order.getOrderStatus()))
                 .toList();
         return mapOrders(orders);
     }
@@ -116,6 +118,7 @@ public class OrderController {
             row.put("paymentStatus", order.getPaymentStatus());
             row.put("orderStatus", order.getOrderStatus());
             row.put("totalAmount", order.getTotalAmount());
+            row.put("deliveryFee", order.getDeliveryFee());
 
             List<Map<String, Object>> items = new ArrayList<>();
             for (OrderItem item : itemsByOrder.getOrDefault(order.getId(), new ArrayList<>())) {
@@ -136,6 +139,7 @@ public class OrderController {
     }
 
     @PutMapping("/orders/{orderId}/payment-status")
+    @Transactional
     public ResponseEntity<Map<String, String>> updatePaymentStatus(
             @PathVariable Integer orderId,
             @RequestBody PaymentStatusRequest request) {
@@ -148,9 +152,13 @@ public class OrderController {
             return ResponseEntity.badRequest().body(Map.of("error", "Payment status must be paid or unpaid"));
         }
 
-        Order order = orderRepository.findById(orderId).orElse(null);
+        Order order = orderRepository.findByIdForUpdate(orderId).orElse(null);
         if (order == null || Boolean.TRUE.equals(order.getDeleted())) {
             return ResponseEntity.status(404).body(Map.of("error", "Order not found"));
+        }
+        if ("cancelled".equalsIgnoreCase(order.getOrderStatus())) {
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(Map.of("error", "Payment status cannot be changed for a cancelled order"));
         }
 
         order.setPaymentStatus(paymentStatus);
@@ -160,6 +168,98 @@ public class OrderController {
                 "paymentStatus", paymentStatus
         ));
     }
+
+    @PutMapping("/orders/{orderId}/status")
+    @Transactional
+    public ResponseEntity<Map<String, String>> updateOrderStatus(
+            @PathVariable Integer orderId,
+            @RequestBody OrderStatusRequest request) {
+        if (request == null || request.getOrderStatus() == null) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Order status must be completed or cancelled"));
+        }
+        String requestedStatus = request.getOrderStatus().trim().toLowerCase(Locale.ROOT);
+        if (!requestedStatus.equals("completed") && !requestedStatus.equals("cancelled")) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Order status must be completed or cancelled"));
+        }
+
+        Order order = orderRepository.findByIdForUpdate(orderId).orElse(null);
+        if (order == null || Boolean.TRUE.equals(order.getDeleted())) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Order not found"));
+        }
+        String currentStatus = order.getOrderStatus().toLowerCase(Locale.ROOT);
+        if (currentStatus.equals(requestedStatus)) {
+            return ResponseEntity.ok(Map.of("message", "Order status unchanged", "orderStatus", requestedStatus));
+        }
+        if (!currentStatus.equals("pending")) {
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(Map.of("error", "Only pending orders can be completed or cancelled"));
+        }
+        if (requestedStatus.equals("cancelled")) {
+            if (!"unpaid".equalsIgnoreCase(order.getPaymentStatus())) {
+                return ResponseEntity.status(HttpStatus.CONFLICT)
+                        .body(Map.of("error", "Only unpaid orders can be cancelled; process any refund separately"));
+            }
+            if (!restoreOrderStock(order)) {
+                return ResponseEntity.status(HttpStatus.CONFLICT)
+                        .body(Map.of("error", "This order cannot be cancelled because a deducted inventory batch is missing"));
+            }
+        }
+
+        order.setOrderStatus(requestedStatus);
+        orderRepository.save(order);
+        return ResponseEntity.ok(Map.of("message", "Order status updated", "orderStatus", requestedStatus));
+    }
+
+    @PutMapping("/orders/{orderId}/archive")
+    @Transactional
+    public ResponseEntity<Map<String, String>> archiveOrder(@PathVariable Integer orderId) {
+        Order order = orderRepository.findByIdForUpdate(orderId).orElse(null);
+        if (order == null || Boolean.TRUE.equals(order.getDeleted())) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Order not found"));
+        }
+        if (!"completed".equalsIgnoreCase(order.getOrderStatus())) {
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(Map.of("error", "Only completed orders can be archived"));
+        }
+
+        ArchivedOrder archivedOrder = new ArchivedOrder();
+        archivedOrder.setOriginalOrderId(order.getId());
+        archivedOrder.setReferenceId(order.getReferenceId());
+        archivedOrder.setCustomerName(order.getCustomerName());
+        archivedOrder.setTotalAmount(order.getTotalAmount());
+        archivedOrder.setArchivedReason("Completed order archived by staff");
+        archivedOrderRepository.save(archivedOrder);
+
+        order.setDeleted(true);
+        order.setDeletedAt(LocalDateTime.now());
+        orderRepository.save(order);
+        return ResponseEntity.ok(Map.of("message", "Completed order archived"));
+    }
+
+    private boolean restoreOrderStock(Order order) {
+        List<OrderItem> items = orderItemRepository.findByOrderId(order.getId());
+        List<Integer> itemIds = items.stream().map(OrderItem::getId).toList();
+        if (itemIds.isEmpty()) return true;
+
+        List<BatchDeduction> deductions = batchDeductionRepository.findByOrderItemIdIn(itemIds).stream()
+                .sorted(java.util.Comparator.comparing(BatchDeduction::getBatchId))
+                .toList();
+        Map<Integer, InventoryBatch> batches = new LinkedHashMap<>();
+        for (BatchDeduction deduction : deductions) {
+            if (batches.containsKey(deduction.getBatchId())) continue;
+            InventoryBatch batch = batchRepository.findByIdForUpdate(deduction.getBatchId()).orElse(null);
+            if (batch == null) return false;
+            batches.put(batch.getId(), batch);
+        }
+        for (BatchDeduction deduction : deductions) {
+            InventoryBatch batch = batches.get(deduction.getBatchId());
+            batch.setRemainingQty(batch.getRemainingQty().add(deduction.getDeductedQty()));
+        }
+        for (InventoryBatch batch : batches.values()) {
+            batchRepository.save(batch);
+        }
+        return true;
+    }
 }
 
 class PaymentStatusRequest {
@@ -167,4 +267,11 @@ class PaymentStatusRequest {
 
     public String getPaymentStatus() { return paymentStatus; }
     public void setPaymentStatus(String paymentStatus) { this.paymentStatus = paymentStatus; }
+}
+
+class OrderStatusRequest {
+    private String orderStatus;
+
+    public String getOrderStatus() { return orderStatus; }
+    public void setOrderStatus(String orderStatus) { this.orderStatus = orderStatus; }
 }

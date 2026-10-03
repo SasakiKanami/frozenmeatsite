@@ -4,7 +4,7 @@ import jakarta.persistence.*;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
-@Entity
+@Entity(name = "SalesOrder")
 @Table(name = "orders")
 public class Order {
 
@@ -25,14 +25,19 @@ public class Order {
     private String paymentMethod;
     private String paymentStatus = "unpaid";
     private BigDecimal totalAmount;
-    private String orderStatus = "completed";
+    private String orderStatus = "pending";
+
+    private Integer createdByUserId;
 
     // Filled by the database defaults (created_at / is_deleted), so never written from Java.
     @Column(name = "created_at", insertable = false, updatable = false)
     private LocalDateTime createdAt;
 
-    @Column(name = "is_deleted", insertable = false, updatable = false)
-    private Boolean isDeleted;
+    @Column(name = "is_deleted")
+    private Boolean isDeleted = false;
+
+    @Column(name = "deleted_at")
+    private LocalDateTime deletedAt;
 
     public String getOrderSource() {
         return orderSource;
@@ -121,7 +126,12 @@ public class Order {
         this.orderStatus = orderStatus;
     }
 
+    public Integer getCreatedByUserId() { return createdByUserId; }
+    public void setCreatedByUserId(Integer createdByUserId) { this.createdByUserId = createdByUserId; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public Boolean getDeleted() { return isDeleted; }
+    public void setDeleted(Boolean deleted) { isDeleted = deleted; }
+    public LocalDateTime getDeletedAt() { return deletedAt; }
+    public void setDeletedAt(LocalDateTime deletedAt) { this.deletedAt = deletedAt; }
 
 }

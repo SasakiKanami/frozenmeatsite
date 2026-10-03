@@ -1,6 +1,7 @@
 package com.example.demo;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -18,6 +19,8 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.test.util.ReflectionTestUtils;
 
 @ExtendWith(MockitoExtension.class)
 class CheckoutControllerTest {
@@ -104,6 +107,88 @@ class CheckoutControllerTest {
         verify(batchRepository, org.mockito.Mockito.never())
                 .findUnexpiredAvailableBatchesForUpdate(7, BigDecimal.ZERO);
         verify(orderRepository, org.mockito.Mockito.never()).save(any(Order.class));
+    }
+
+    @Test
+    void walkInOrderUsesSharedFifoCheckoutAndRecordsStaffSource() {
+        Product product = new Product();
+        product.setId(7);
+        product.setPricePerUnit(new BigDecimal("10.00"));
+        product.setVisible(false);
+        when(productRepository.findById(7)).thenReturn(Optional.of(product));
+        when(batchRepository.findUnexpiredAvailableBatchesForUpdate(7, BigDecimal.ZERO))
+                .thenReturn(List.of(batch(21, "5")));
+        when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> {
+            Order order = invocation.getArgument(0);
+            order.setId(31);
+            return order;
+        });
+        when(orderItemRepository.save(any(OrderItem.class))).thenAnswer(invocation -> {
+            OrderItem item = invocation.getArgument(0);
+            item.setId(41);
+            return item;
+        });
+        when(batchRepository.save(any(InventoryBatch.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+        User cashier = new User();
+        cashier.setId(9);
+        when(userRepository.findByUsername("cashier")).thenReturn(cashier);
+        Authentication authentication = org.mockito.Mockito.mock(Authentication.class);
+        when(authentication.isAuthenticated()).thenReturn(true);
+        when(authentication.getPrincipal()).thenReturn("cashier");
+        when(authentication.getName()).thenReturn("cashier");
+
+        CheckoutRequest request = checkoutRequest();
+        request.getOrder().setCustomerName(" ");
+        request.getOrder().setCustomerContact(" ");
+
+        ResponseEntity<?> response = controller.createWalkInOrder(request, authentication);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        ArgumentCaptor<Order> orderCaptor = ArgumentCaptor.forClass(Order.class);
+        verify(orderRepository).save(orderCaptor.capture());
+        Order savedOrder = orderCaptor.getValue();
+        assertEquals("walk_in", savedOrder.getOrderSource());
+        assertEquals("Walk-in Customer", savedOrder.getCustomerName());
+        assertEquals("N/A", savedOrder.getCustomerContact());
+        assertEquals(9, savedOrder.getCreatedByUserId());
+        assertNull(savedOrder.getCustomerUserId());
+        assertEquals("pending", savedOrder.getOrderStatus());
+    }
+
+    @Test
+    void deliveryFeeIsAddedByTheServerToDeliveryOrders() {
+        ReflectionTestUtils.setField(controller, "configuredDeliveryFee", new BigDecimal("25.00"));
+        Product product = new Product();
+        product.setId(7);
+        product.setPricePerUnit(new BigDecimal("10.00"));
+        when(productRepository.findById(7)).thenReturn(Optional.of(product));
+        when(batchRepository.findUnexpiredAvailableBatchesForUpdate(7, BigDecimal.ZERO))
+                .thenReturn(List.of(batch(21, "5")));
+        when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> {
+            Order order = invocation.getArgument(0);
+            order.setId(31);
+            return order;
+        });
+        when(orderItemRepository.save(any(OrderItem.class))).thenAnswer(invocation -> {
+            OrderItem item = invocation.getArgument(0);
+            item.setId(41);
+            return item;
+        });
+        when(batchRepository.save(any(InventoryBatch.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        CheckoutRequest request = checkoutRequest();
+        request.getOrder().setFulfillmentMethod("Same-Day Delivery");
+        request.getOrder().setDeliveryAddress("10 Main Street, Caloocan");
+
+        ResponseEntity<?> response = controller.processCheckout(request, null);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        ArgumentCaptor<Order> orderCaptor = ArgumentCaptor.forClass(Order.class);
+        verify(orderRepository).save(orderCaptor.capture());
+        assertEquals(new BigDecimal("25.00"), orderCaptor.getValue().getDeliveryFee());
+        assertEquals(new BigDecimal("75.00"), orderCaptor.getValue().getTotalAmount());
     }
 
     private InventoryBatch batch(Integer id, String remaining) {
