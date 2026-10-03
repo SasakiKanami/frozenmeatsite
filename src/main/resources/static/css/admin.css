@@ -491,6 +491,127 @@
     padding: 1.5rem !important;
 }
 
+.inventory-product-link,
+.inventory-manage-link {
+    display: block;
+}
+
+.inventory-product-link {
+    color: var(--navy-deep);
+    text-decoration: none;
+}
+
+.inventory-product-link:hover {
+    color: var(--ice-glacier-blue);
+    text-decoration: underline;
+}
+
+.inventory-manage-link {
+    margin-top: 0.2rem;
+    color: var(--ice-glacier-blue);
+    font-size: 0.76rem;
+    font-weight: 700;
+}
+
+.product-batches-page {
+    display: grid;
+    gap: 1.25rem;
+    padding-top: 1.5rem;
+    padding-bottom: 3rem;
+}
+
+.batch-back-link {
+    width: fit-content;
+    color: var(--ice-glacier-blue);
+    font-weight: 700;
+    text-decoration: none;
+}
+
+.product-summary-layout {
+    display: grid;
+    grid-template-columns: minmax(180px, 280px) 1fr;
+    gap: 1.5rem;
+    align-items: center;
+}
+
+.product-summary-image {
+    display: block;
+    width: 100%;
+    max-height: 240px;
+    min-height: 160px;
+    object-fit: contain;
+    border-radius: 10px;
+    background: rgba(224, 242, 254, 0.55);
+}
+
+.product-summary-image-empty {
+    display: grid;
+    place-items: center;
+    color: var(--text-muted);
+}
+
+.product-summary-name {
+    color: var(--navy-deep);
+    font-size: 1.8rem;
+    margin: 0.4rem 0;
+}
+
+.product-summary-category {
+    color: var(--text-muted);
+}
+
+.product-summary-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+    gap: 1rem;
+    margin-top: 1.3rem;
+}
+
+.product-summary-stats > div {
+    display: grid;
+    gap: 0.35rem;
+}
+
+.product-summary-stats > div > span {
+    color: var(--text-muted);
+    font-size: 0.78rem;
+}
+
+.product-summary-stats strong {
+    color: var(--navy-deep);
+}
+
+.batch-form-grid {
+    grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+}
+
+.batch-table {
+    min-width: 900px;
+}
+
+.batch-expiry-edit {
+    display: grid;
+    grid-template-columns: minmax(140px, 1fr) auto;
+    gap: 0.35rem;
+}
+
+.batch-expiry-input {
+    min-width: 140px;
+    border: 1px solid var(--glass-border-ice);
+    border-radius: 7px;
+    background: rgba(255, 255, 255, 0.9);
+    color: var(--navy-deep);
+    padding: 0.4rem;
+    font: inherit;
+    font-size: 0.8rem;
+}
+
+.batch-expiry-message {
+    grid-column: 1 / -1;
+    color: #dc2626;
+    font-size: 0.72rem;
+}
+
 .stock-qty-value {
     min-width: 46px;
     text-align: center;
@@ -581,5 +702,17 @@
 
     .admin-clock {
         text-align: left;
+    }
+
+    .product-summary-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .product-summary-image {
+        max-width: 100%;
+    }
+
+    .product-summary-name {
+        font-size: 1.45rem;
     }
 }

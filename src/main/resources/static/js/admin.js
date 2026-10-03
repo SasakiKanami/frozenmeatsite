@@ -21,6 +21,31 @@ function updateAdminClock() {
     if (dateElement) dateElement.textContent = date;
 }
 
+async function toggleProductVisibility(button) {
+    const productId = button.dataset.productId;
+    const visible = button.dataset.productVisibility === 'show';
+    button.disabled = true;
+    setStockAdjustmentMessage('');
+
+    try {
+        const response = await fetch(`/api/products/${encodeURIComponent(productId)}/visibility`, {
+            method: 'PUT',
+            headers: csrfHeaders({ 'Content-Type': 'application/json' }),
+            body: JSON.stringify({ visible })
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(result.error || `Visibility update failed: ${response.status}`);
+
+        await loadInventory();
+        setStockAdjustmentMessage(result.message);
+    } catch (error) {
+        setStockAdjustmentMessage(error.message || 'Unable to update storefront visibility.', true);
+        console.error('Unable to update product storefront visibility:', error);
+    } finally {
+        button.disabled = false;
+    }
+}
+
 function escapeHtml(value) {
     return String(value ?? '').replace(/[&<>"']/g, character => ({
         '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
@@ -61,28 +86,17 @@ function renderInventory(products) {
         const status = getStockStatus(quantity, Number(product.reorderLevel ?? 5));
         const row = document.createElement('tr');
         row.innerHTML = `
-            <td class="cell-product-name">${escapeHtml(product.name)}</td>
+            <td class="cell-product-name">
+                <a class="inventory-product-link" href="product_batches.html?id=${encodeURIComponent(product.productId)}">${escapeHtml(product.name)}</a>
+                <a class="inventory-manage-link" href="product_batches.html?id=${encodeURIComponent(product.productId)}">Manage batches</a>
+            </td>
             <td>₱${Number(product.pricePerUnit).toFixed(2)} / ${product.unit}</td>
             <td><span class="stock-pill ${status.className}">${status.text}</span></td>
             <td class="stock-qty-value">${quantity} ${product.unit}</td>
             <td>
-                <div class="stock-adjust">
-                    <button class="btn-restock" type="button" data-stock-adjustment="-1" data-product-id="${escapeHtml(product.productId)}" aria-label="Remove 1 ${escapeHtml(product.unit)} of ${escapeHtml(product.name)}">-1</button>
-                    <button class="btn-restock" type="button" data-stock-adjustment="1" data-product-id="${escapeHtml(product.productId)}" aria-label="Add 1 ${escapeHtml(product.unit)} of ${escapeHtml(product.name)}">+1</button>
-                </div>
-            </td>
-            <td>
-                <div class="stock-adjust">
-                    <button class="btn-restock" type="button" data-stock-adjustment="-10" data-product-id="${escapeHtml(product.productId)}" aria-label="Remove 10 ${escapeHtml(product.unit)} of ${escapeHtml(product.name)}">-10</button>
-                    <button class="btn-restock" type="button" data-stock-adjustment="10" data-product-id="${escapeHtml(product.productId)}" aria-label="Add 10 ${escapeHtml(product.unit)} of ${escapeHtml(product.name)}">+10</button>
-                </div>
-            </td>
-            <td>
-                <div class="stock-adjust stock-custom-adjust">
-                    <input class="stock-custom-input" type="number" min="${product.unit === 'kg' ? '0.01' : '1'}" step="${product.unit === 'kg' ? '0.01' : '1'}" required data-custom-stock-amount="${escapeHtml(product.productId)}" aria-label="Custom stock amount for ${escapeHtml(product.name)}">
-                    <button class="btn-restock" type="button" data-custom-stock-adjustment="add" data-product-id="${escapeHtml(product.productId)}" aria-label="Add custom amount of ${escapeHtml(product.name)}">Add</button>
-                    <button class="btn-restock" type="button" data-custom-stock-adjustment="remove" data-product-id="${escapeHtml(product.productId)}" aria-label="Remove custom amount of ${escapeHtml(product.name)}">Remove</button>
-                </div>
+                <button class="btn-restock" type="button" data-product-visibility="${product.visible ? 'hide' : 'show'}" data-product-id="${escapeHtml(product.productId)}">
+                    ${product.visible ? 'Hide item' : 'Show item'}
+                </button>
             </td>
         `;
         tableBody.appendChild(row);
@@ -91,7 +105,7 @@ function renderInventory(products) {
     if (visibleProducts.length === 0) {
         const row = document.createElement('tr');
         const message = document.createElement('td');
-        message.colSpan = 7;
+        message.colSpan = 5;
         message.className = 'inventory-no-results';
         message.textContent = searchTerm
             ? `No inventory items match "${document.getElementById('inventory-search').value.trim()}".`
@@ -114,13 +128,13 @@ function renderInventory(products) {
 async function loadInventory() {
     const tableBody = document.getElementById('inventory-table-body');
     try {
-        const response = await fetch('/api/products');
+        const response = await fetch('/api/admin/products');
         if (!response.ok) throw new Error(`Inventory request failed: ${response.status}`);
         inventoryProducts = await response.json();
         renderInventory(inventoryProducts);
     } catch (error) {
         if (tableBody) {
-            tableBody.innerHTML = '<tr><td colspan="7">Inventory is temporarily unavailable.</td></tr>';
+            tableBody.innerHTML = '<tr><td colspan="5">Inventory is temporarily unavailable.</td></tr>';
         }
         console.error('Unable to load admin inventory:', error);
     }
@@ -131,47 +145,6 @@ function setStockAdjustmentMessage(message, isError = false) {
     if (!messageElement) return;
     messageElement.textContent = message;
     messageElement.classList.toggle('error', isError);
-}
-
-async function adjustStock(productId, adjustment, button) {
-    const row = button.closest('tr');
-    const rowButtons = row?.querySelectorAll('[data-stock-adjustment], [data-custom-stock-adjustment]') ?? [];
-    rowButtons.forEach(rowButton => { rowButton.disabled = true; });
-    setStockAdjustmentMessage('');
-
-    try {
-        const response = await fetch(`/api/products/${encodeURIComponent(productId)}/stock-adjustments`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ adjustment })
-        });
-        const result = await response.json().catch(() => ({}));
-        if (!response.ok) throw new Error(result.error || `Stock adjustment failed: ${response.status}`);
-
-        await loadInventory();
-        setStockAdjustmentMessage(`Stock updated by ${adjustment > 0 ? '+' : ''}${adjustment}.`);
-    } catch (error) {
-        setStockAdjustmentMessage(error.message || 'Unable to update stock.', true);
-        console.error('Unable to adjust admin stock:', error);
-    } finally {
-        rowButtons.forEach(rowButton => { rowButton.disabled = false; });
-    }
-}
-
-function adjustCustomStock(button) {
-    const input = button.closest('tr')?.querySelector('[data-custom-stock-amount]');
-    if (!input || !input.reportValidity()) return;
-
-    const amount = Number(input.value);
-    if (!Number.isFinite(amount) || amount <= 0) {
-        input.setCustomValidity('Enter an amount greater than zero.');
-        input.reportValidity();
-        input.setCustomValidity('');
-        return;
-    }
-
-    const adjustment = button.dataset.customStockAdjustment === 'remove' ? -amount : amount;
-    adjustStock(Number(button.dataset.productId), adjustment, button);
 }
 
 // ---- Orders (GET /api/orders) ----
@@ -239,7 +212,7 @@ async function updatePaymentStatus(select) {
     try {
         const response = await fetch(`/api/orders/${encodeURIComponent(select.dataset.orderId)}/payment-status`, {
             method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
+            headers: csrfHeaders({ 'Content-Type': 'application/json' }),
             body: JSON.stringify({ paymentStatus: select.value })
         });
         const result = await response.json().catch(() => ({}));
@@ -276,7 +249,9 @@ function renderOrders(orders) {
         const placed = parseCreatedAt(order.createdAt);
         return placed && placed.toDateString() === today && order.orderStatus !== 'cancelled';
     });
-    const revenue = todaysOrders.reduce((sum, order) => sum + Number(order.totalAmount), 0);
+    const revenue = todaysOrders
+        .filter(order => order.paymentStatus === 'paid')
+        .reduce((sum, order) => sum + Number(order.totalAmount), 0);
     document.getElementById('stat-orders').textContent = todaysOrders.length;
     document.getElementById('stat-revenue').textContent = `₱${revenue.toFixed(2)}`;
 }
@@ -312,13 +287,9 @@ document.addEventListener('DOMContentLoaded', () => {
     updateAdminClock();
     setInterval(updateAdminClock, 1000);
     document.getElementById('inventory-table-body')?.addEventListener('click', event => {
-        const button = event.target.closest('[data-stock-adjustment], [data-custom-stock-adjustment]');
+        const button = event.target.closest('[data-product-visibility]');
         if (!button) return;
-        if (button.hasAttribute('data-custom-stock-adjustment')) {
-            adjustCustomStock(button);
-        } else {
-            adjustStock(Number(button.dataset.productId), Number(button.dataset.stockAdjustment), button);
-        }
+        toggleProductVisibility(button);
     });
     document.getElementById('inventory-search')?.addEventListener('input', () => {
         renderInventory(inventoryProducts);

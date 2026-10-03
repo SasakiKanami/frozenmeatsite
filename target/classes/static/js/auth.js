@@ -1,17 +1,3 @@
-// --- CARNI-FLOW ACCOUNT SYSTEM ---
-// CHANGED (see reply for full list): this file originally ran entirely on
-// localStorage as a front-end-only placeholder. It now calls the real
-// /api/auth/signup and /api/auth/login endpoints from AuthController.java,
-// matching the field names Spring expects:
-//   - signup body binds directly to the User entity, so keys must be
-//     fullName / username / passwordHash / email (not "name" / "password").
-//   - login body is read as a Map<String,String> of username / password.
-// The backend's `username` column is what login actually matches against,
-// and this form only collects an email, so the email the person signs up
-// with is reused as their username behind the scenes. That's why the
-// Sign In field is now labelled "Email or Username" — it also has to
-// accept non-email usernames like the seeded admin/cashier accounts.
-
 // 1. Tab switching between Sign In / Create Account
 function switchAuthTab(tab) {
     const loginTab = document.getElementById('tab-login');
@@ -73,7 +59,6 @@ async function handleLogin(e) {
 
     const identifier = document.getElementById('login-email').value.trim();
     const password = document.getElementById('login-password').value;
-    const remember = document.getElementById('remember-me').checked;
     const submitButton = e.currentTarget.querySelector('button[type="submit"]');
 
     if (!identifier || !password) {
@@ -86,7 +71,7 @@ async function handleLogin(e) {
     try {
         const response = await fetch('/api/auth/login', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: csrfHeaders({ 'Content-Type': 'application/json' }),
             body: JSON.stringify({ username: identifier, password: password })
         });
         const result = await response.json().catch(() => ({}));
@@ -95,13 +80,8 @@ async function handleLogin(e) {
             throw new Error(result.error || 'Incorrect email/username or password.');
         }
 
-        const session = { username: identifier, role: result.role, userId: result.userId, since: Date.now() };
-        if (remember) {
-            localStorage.setItem('carni_session', JSON.stringify(session));
-        } else {
-            sessionStorage.setItem('carni_session', JSON.stringify(session));
-        }
-
+        localStorage.removeItem('carni_session');
+        sessionStorage.removeItem('carni_session');
         showAlert('Signed in! Redirecting…', 'success');
         setTimeout(() => redirectForRole(result.role), 700);
     } catch (error) {
@@ -145,11 +125,11 @@ async function handleSignup(e) {
     try {
         const response = await fetch('/api/auth/signup', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: csrfHeaders({ 'Content-Type': 'application/json' }),
             body: JSON.stringify({
                 fullName: name,
                 username: email, // the users table requires a unique username; the signup email doubles as it
-                passwordHash: password, // AuthController stores/compares this field as-is (see note in reply)
+                password: password,
                 email: email
             })
         });
@@ -159,8 +139,8 @@ async function handleSignup(e) {
             throw new Error(result.error || 'Unable to create your account.');
         }
 
-        const session = { username: email, role: 'customer', userId: result.userId, since: Date.now() };
-        localStorage.setItem('carni_session', JSON.stringify(session));
+        localStorage.removeItem('carni_session');
+        sessionStorage.removeItem('carni_session');
 
         showAlert('Account created! Redirecting…', 'success');
         setTimeout(() => redirectForRole('customer'), 700);
@@ -180,6 +160,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     document.getElementById('forgot-link').addEventListener('click', (e) => {
         e.preventDefault();
-        showAlert('Password reset isn\'t wired up yet — ask an admin to reset it for you directly in the database for now.');
+        showAlert('Password reset is not available yet. Please contact an administrator for help.');
     });
 });

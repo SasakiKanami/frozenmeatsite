@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.security.core.Authentication;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -43,6 +44,26 @@ public class OrderController {
                 orders.add(order);
             }
         }
+        return mapOrders(orders);
+    }
+
+    @GetMapping("/account/orders")
+    @Transactional(readOnly = true)
+    public List<Map<String, Object>> listCustomerPendingOrders(Authentication authentication) {
+        User user = userRepository.findByUsername(authentication.getName());
+        if (user == null) {
+            return new ArrayList<>();
+        }
+        List<Order> orders = orderRepository.findByCustomerUserIdOrderByIdDesc(user.getId()).stream()
+                .filter(order -> !Boolean.TRUE.equals(order.getDeleted()))
+                .filter(order -> !"cancelled".equalsIgnoreCase(order.getOrderStatus()))
+                .filter(order -> !"paid".equalsIgnoreCase(order.getPaymentStatus())
+                        || "pending".equalsIgnoreCase(order.getOrderStatus()))
+                .toList();
+        return mapOrders(orders);
+    }
+
+    private List<Map<String, Object>> mapOrders(List<Order> orders) {
         if (orders.isEmpty()) {
             return new ArrayList<>();
         }

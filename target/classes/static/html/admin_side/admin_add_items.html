@@ -109,6 +109,17 @@
                         </select>
                     </div>
                     <div class="form-group">
+                        <label class="form-label" for="expiration-date">Batch Expiration Date</label>
+                        <input type="date" id="expiration-date" class="form-input" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="supplier-name">Supplier</label>
+                        <input type="text" id="supplier-name" class="form-input" maxlength="100" placeholder="Direct Meat Supplier">
+                    </div>
+                </div>
+
+                <div class="form-grid">
+                    <div class="form-group">
                         <label class="form-label" for="product-image">Upload Product Image (optional, max 5 MB)</label>
                         <input type="file" id="product-image" class="form-input" accept="image/jpeg,image/png,image/gif,image/webp">
                         <p class="image-upload-status" id="image-upload-status" role="status" aria-live="polite"></p>
@@ -143,12 +154,14 @@
                     <thead>
                         <tr>
                             <th>Batch Ref</th>
+                            <th>Supplier</th>
                             <th>Item Name</th>
                             <th>Category</th>
                             <th>Price / Unit</th>
                             <th>Quantity</th>
                             <th>Status</th>
                             <th>Storage Zone</th>
+                            <th>Expiration Date</th>
                         </tr>
                     </thead>
                     <tbody id="recent-items-body">
@@ -159,6 +172,7 @@
 
     </main>
 
+    <script src="../../js/csrf.js"></script>
     <script>
         function escapeHtml(value) {
             return String(value ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -189,6 +203,13 @@
         const imagePreview = document.getElementById('image-upload-preview');
         const imageUploadStatus = document.getElementById('image-upload-status');
         const addItemForm = document.getElementById('add-item-form');
+        const expirationDateInput = document.getElementById('expiration-date');
+        const currentDate = new Date();
+        expirationDateInput.min = [
+            currentDate.getFullYear(),
+            String(currentDate.getMonth() + 1).padStart(2, '0'),
+            String(currentDate.getDate()).padStart(2, '0')
+        ].join('-');
 
         imageInput.addEventListener('change', function() {
             if (imagePreviewUrl) URL.revokeObjectURL(imagePreviewUrl);
@@ -231,6 +252,8 @@
             const lowLimit = parseFloat(document.getElementById('low-stock-limit').value);
             const unit = document.getElementById('unit').value;
             const zone = document.getElementById('storage-zone').value;
+            const expirationDate = expirationDateInput.value || null;
+            const supplierName = document.getElementById('supplier-name').value.trim();
             let imageUrl = document.getElementById('image-url').value.trim() || null;
             const imageFile = imageInput.files[0];
 
@@ -244,6 +267,7 @@
                     formData.append('file', imageFile);
                     const uploadResponse = await fetch('/api/products/images', {
                         method: 'POST',
+                        headers: csrfHeaders(),
                         body: formData
                     });
                     const uploadResult = await uploadResponse.json();
@@ -258,7 +282,7 @@
 
                 const response = await fetch('/api/products', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: csrfHeaders({ 'Content-Type': 'application/json' }),
                     body: JSON.stringify({
                         name: name,
                         category: category,
@@ -267,7 +291,9 @@
                         pricePerUnit: Number(price),
                         imageUrl: imageUrl,
                         reorderLevel: lowLimit,
+                        expirationDate: expirationDate,
                         batchNumber: sku,
+                        supplierName: supplierName || null,
                         initialQty: qty
                     })
                 });
@@ -291,12 +317,14 @@
                 const newRow = document.createElement('tr');
                 newRow.innerHTML = `
                 <td class="ref-pill">${escapeHtml(sku)}</td>
+                <td class="cell-product-cat">${escapeHtml(supplierName || 'Direct Meat Supplier')}</td>
                 <td class="cell-product-name">${escapeHtml(name)}</td>
                 <td class="cell-product-cat">${escapeHtml(category)}</td>
                 <td>₱${price}</td>
                 <td class="stock-qty-value">${qty} ${unit}</td>
                 <td><span class="stock-pill ${statusClass}">${statusText}</span></td>
                 <td class="cell-product-cat">${zone}</td>
+                <td class="cell-product-cat">${escapeHtml(expirationDate || '—')}</td>
             `;
 
                 tbody.insertBefore(newRow, tbody.firstChild);

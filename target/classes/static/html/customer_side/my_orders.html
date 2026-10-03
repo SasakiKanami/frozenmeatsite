@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Pending Orders | J&R Frozen Goods</title>
+    <link rel="stylesheet" href="../../css/styles.css">
+    <link rel="stylesheet" href="../../css/admin.css">
+    <link rel="stylesheet" href="../../css/mobile-styles.css" media="(max-width: 461px)">
+</head>
+<body>
+    <header class="navbar">
+        <div class="nav-container">
+            <div class="brand">
+                <span class="brand-title">J&R Frozen Goods</span>
+                <span class="brand-sub">Carni-Flow Cold Storage</span>
+            </div>
+            <nav class="nav-links">
+                <a href="index.html" class="cart-pill">Back to Catalog</a>
+            </nav>
+        </div>
+    </header>
+
+    <main class="container">
+        <section class="frost-panel">
+            <h1 class="card-heading">My Pending Orders</h1>
+            <p class="card-sub">Orders awaiting payment or fulfillment. Your order and payment statuses are shown separately.</p>
+            <p class="order-history-message" id="orders-message" role="status" aria-live="polite">Loading your orders...</p>
+            <div class="table-scroll">
+                <table class="admin-table">
+                    <thead>
+                        <tr>
+                            <th>Reference</th>
+                            <th>Placed</th>
+                            <th>Items</th>
+                            <th>Fulfillment</th>
+                            <th>Order Status</th>
+                            <th>Payment</th>
+                            <th>Total</th>
+                        </tr>
+                    </thead>
+                    <tbody id="customer-orders-body"></tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+
+    <footer class="footer">
+        <p>J&R Frozen Goods • Sangandaan, Caloocan City</p>
+    </footer>
+    <script src="../../js/my-orders.js"></script>
+</body>
+</html>

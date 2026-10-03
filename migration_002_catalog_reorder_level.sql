@@ -16,5 +16,6 @@ LEFT JOIN inventory_batches b
     ON p.id = b.product_id
     AND b.is_deleted = FALSE
     AND b.remaining_qty > 0
+    AND (b.expiration_date IS NULL OR b.expiration_date >= CURRENT_DATE)
 WHERE p.is_deleted = FALSE
 GROUP BY p.id, p.name, p.category, p.temperature_tier, p.unit, p.price_per_unit, p.image_url, p.reorder_level;

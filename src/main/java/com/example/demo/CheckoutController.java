@@ -3,6 +3,7 @@ package com.example.demo;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 import java.math.BigDecimal;
@@ -20,13 +21,14 @@ public class CheckoutController {
 
     @Autowired private OrderRepository orderRepository;
     @Autowired private OrderItemRepository orderItemRepository;
+    @Autowired private BatchDeductionRepository batchDeductionRepository;
     @Autowired private InventoryBatchRepository batchRepository;
     @Autowired private ProductRepository productRepository;
     @Autowired private UserRepository userRepository;
 
     @PostMapping("/orders")
     @Transactional
-    public ResponseEntity<?> processCheckout(@RequestBody CheckoutRequest request) {
+    public ResponseEntity<?> processCheckout(@RequestBody CheckoutRequest request, Authentication authentication) {
         if (request == null || request.getOrder() == null || request.getItems() == null || request.getItems().isEmpty()) {
             return ResponseEntity.badRequest().body(Map.of("error", "Customer details and at least one item are required"));
         }
@@ -56,7 +58,8 @@ public class CheckoutController {
             Product product = products.get(submittedItem.getProductId());
             if (product == null) {
                 product = productRepository.findById(submittedItem.getProductId()).orElse(null);
-                if (product == null || Boolean.TRUE.equals(product.getDeleted())) {
+                if (product == null || Boolean.TRUE.equals(product.getDeleted())
+                        || !Boolean.TRUE.equals(product.getVisible())) {
                     return ResponseEntity.badRequest().body(Map.of("error", "A requested product is unavailable"));
                 }
                 products.put(product.getId(), product);
@@ -78,7 +81,7 @@ public class CheckoutController {
         Map<Integer, List<InventoryBatch>> availableBatchesByProduct = new LinkedHashMap<>();
         for (Map.Entry<Integer, BigDecimal> requested : requestedByProduct.entrySet()) {
             List<InventoryBatch> availableBatches = batchRepository
-                    .findAvailableBatchesForUpdate(requested.getKey(), BigDecimal.ZERO);
+                    .findUnexpiredAvailableBatchesForUpdate(requested.getKey(), BigDecimal.ZERO);
             BigDecimal availableQuantity = availableBatches.stream()
                     .map(InventoryBatch::getRemainingQty)
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
@@ -95,9 +98,11 @@ public class CheckoutController {
         order.setCustomerName(submittedOrder.getCustomerName().trim());
         order.setCustomerContact(submittedOrder.getCustomerContact().trim());
         order.setCustomerEmail(blankToNull(submittedOrder.getCustomerEmail()));
-        // Orders placed while signed in carry the account id; unknown/missing ids stay guest orders.
-        Integer submittedUserId = submittedOrder.getCustomerUserId();
-        order.setCustomerUserId(submittedUserId != null && userRepository.existsById(submittedUserId) ? submittedUserId : null);
+        if (authentication != null && authentication.isAuthenticated()
+                && !"anonymousUser".equals(authentication.getPrincipal())) {
+            User signedInUser = userRepository.findByUsername(authentication.getName());
+            order.setCustomerUserId(signedInUser == null ? null : signedInUser.getId());
+        }
         order.setFulfillmentMethod(submittedOrder.getFulfillmentMethod());
         order.setDeliveryAddress(blankToNull(submittedOrder.getDeliveryAddress()));
         order.setDeliveryNotes(blankToNull(submittedOrder.getDeliveryNotes()));
@@ -119,6 +124,12 @@ public class CheckoutController {
                 batch.setRemainingQty(batch.getRemainingQty().subtract(deduction));
                 qtyToDeduct = qtyToDeduct.subtract(deduction);
                 batchRepository.save(batch);
+
+                BatchDeduction batchDeduction = new BatchDeduction();
+                batchDeduction.setOrderItemId(savedItem.getId());
+                batchDeduction.setBatchId(batch.getId());
+                batchDeduction.setDeductedQty(deduction);
+                batchDeductionRepository.save(batchDeduction);
             }
         }
 

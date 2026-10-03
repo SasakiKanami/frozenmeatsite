@@ -4,33 +4,46 @@
 let cart = JSON.parse(localStorage.getItem('carni_guest_cart')) || [];
 let quantityProduct = null;
 
-// Signed-in account (if any) saved by auth.js; guests simply have no session.
-function getSession() {
-    try {
-        return JSON.parse(localStorage.getItem('carni_session') || sessionStorage.getItem('carni_session') || 'null');
-    } catch (error) {
-        return null;
-    }
-}
-
 function escapeHtml(value) {
     return String(value ?? '').replace(/[&<>"']/g, character => ({
         '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
     }[character]));
 }
 
-// The Login link becomes a Logout link once someone is signed in.
-function updateAuthLink() {
+// Ask the server for the current session; browser storage is not trusted for identity.
+async function updateAuthLink() {
     const link = document.getElementById('auth-link');
-    const session = getSession();
-    if (!link || !session) return;
+    const ordersLink = document.getElementById('my-orders-link');
+    if (!link) return;
+
+    try {
+        const response = await fetch('/api/auth/me');
+        if (!response.ok) throw new Error(`Session check failed: ${response.status}`);
+        const session = await response.json();
+        if (!session.authenticated) return;
+
+        if (session.role === 'customer' && ordersLink) ordersLink.classList.remove('hidden');
+    } catch (error) {
+        console.error('Unable to check signed-in customer session:', error);
+        return;
+    }
+
     link.textContent = 'Logout';
     link.href = '#';
-    link.addEventListener('click', event => {
+    link.addEventListener('click', async event => {
         event.preventDefault();
-        localStorage.removeItem('carni_session');
-        sessionStorage.removeItem('carni_session');
-        window.location.reload();
+        link.setAttribute('aria-disabled', 'true');
+        try {
+            const response = await fetch('/api/auth/logout', {
+                method: 'POST',
+                headers: csrfHeaders()
+            });
+            if (!response.ok) throw new Error(`Sign out failed: ${response.status}`);
+            window.location.reload();
+        } catch (error) {
+            link.removeAttribute('aria-disabled');
+            alert(error.message || 'Unable to sign out.');
+        }
     });
 }
 
@@ -270,7 +283,7 @@ async function handleGuestCheckout(event) {
     try {
         const response = await fetch('/api/orders', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: csrfHeaders({ 'Content-Type': 'application/json' }),
             body: JSON.stringify({
                 order: {
                     customerName: guestName,
@@ -280,8 +293,6 @@ async function handleGuestCheckout(event) {
                     deliveryAddress: deliveryAddress,
                     deliveryNotes: deliveryNotes,
                     paymentMethod: paymentMethod,
-                    // Links the order to the signed-in account so admin sees it under Registered Account Orders
-                    customerUserId: Number.isInteger(getSession()?.userId) ? getSession().userId : null
                 },
                 items: cart.map(item => ({
                     productId: item.productId,

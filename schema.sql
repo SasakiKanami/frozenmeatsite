@@ -38,6 +38,7 @@ CREATE TABLE products (
     price_per_unit NUMERIC(10, 2) NOT NULL CHECK (price_per_unit >= 0),
     image_url TEXT NULL,
     reorder_level NUMERIC(10, 2) DEFAULT 5.00,
+    is_visible BOOLEAN NOT NULL DEFAULT TRUE,
     is_deleted BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     deleted_at TIMESTAMP NULL
@@ -137,5 +138,7 @@ LEFT JOIN inventory_batches b
     ON p.id = b.product_id 
     AND b.is_deleted = FALSE 
     AND b.remaining_qty > 0
+    AND (b.expiration_date IS NULL OR b.expiration_date >= CURRENT_DATE)
 WHERE p.is_deleted = FALSE
+    AND p.is_visible = TRUE
 GROUP BY p.id, p.name, p.category, p.temperature_tier, p.unit, p.price_per_unit, p.image_url, p.reorder_level;

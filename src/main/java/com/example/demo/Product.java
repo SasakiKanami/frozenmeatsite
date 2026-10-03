@@ -24,6 +24,8 @@ public class Product {
     private BigDecimal pricePerUnit;
     private String imageUrl;
     private BigDecimal reorderLevel;
+    @Column(name = "is_visible", nullable = false)
+    private Boolean visible = true;
     private Boolean isDeleted = false;
     private LocalDateTime createdAt;
     private LocalDateTime deletedAt;
@@ -90,6 +92,14 @@ public class Product {
 
     public void setReorderLevel(BigDecimal reorderLevel) {
         this.reorderLevel = reorderLevel;
+    }
+
+    public Boolean getVisible() {
+        return visible;
+    }
+
+    public void setVisible(Boolean visible) {
+        this.visible = visible;
     }
 
     public Boolean getDeleted() {

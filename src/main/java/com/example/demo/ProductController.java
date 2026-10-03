@@ -8,10 +8,10 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 
 @RestController
 @RequestMapping("/api")
@@ -51,20 +51,65 @@ public class ProductController {
     }
 
     @GetMapping("/products")
-    public List getCatalog() {
+    public List<ProductStock> getCatalog() {
         return productStockRepository.findAll();
     }
 
-    @PostMapping("/products/{productId}/stock-adjustments")
+    @GetMapping("/admin/products")
+    public List<AdminProductStock> getAdminProducts() {
+        return productStockRepository.findAllForAdmin();
+    }
+
+    @GetMapping("/admin/products/{productId}")
+    @Transactional(readOnly = true)
+    public ResponseEntity<?> getAdminProductDetails(@PathVariable Integer productId) {
+        Product product = productRepository.findById(productId).orElse(null);
+        if (product == null || Boolean.TRUE.equals(product.getDeleted())) {
+            return ResponseEntity.status(404).body(Map.of("error", "Product not found"));
+        }
+
+        List<InventoryBatch> batches = inventoryBatchRepository
+                .findByProductIdOrderByArrivalDateAscIdAsc(productId);
+        LocalDate today = LocalDate.now();
+        BigDecimal availableStock = batches.stream()
+                .filter(batch -> !Boolean.TRUE.equals(batch.getDeleted()))
+                .filter(batch -> batch.getExpirationDate() == null || !batch.getExpirationDate().isBefore(today))
+                .map(InventoryBatch::getRemainingQty)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        List<AdminBatchDetails> batchDetails = batches.stream()
+                .map(batch -> new AdminBatchDetails(
+                        batch.getId(),
+                        batch.getBatchNumber(),
+                        batch.getSupplierName(),
+                        batch.getArrivalDate(),
+                        batch.getExpirationDate(),
+                        batch.getInitialQty(),
+                        batch.getRemainingQty(),
+                        batch.getDeleted()))
+                .toList();
+
+        return ResponseEntity.ok(new AdminProductDetails(
+                product.getId(),
+                product.getName(),
+                product.getCategory(),
+                product.getTemperatureTier(),
+                product.getUnit(),
+                product.getPricePerUnit(),
+                product.getImageUrl(),
+                product.getReorderLevel(),
+                product.getVisible(),
+                availableStock,
+                batchDetails));
+    }
+
+    @PostMapping("/admin/products/{productId}/batches")
     @Transactional
-    public ResponseEntity<?> adjustStock(@PathVariable Integer productId, @RequestBody AdjustStockRequest request) {
-        if (request == null || request.getAdjustment() == null
-                || request.getAdjustment().signum() == 0
-                || request.getAdjustment().stripTrailingZeros().scale() > 2
-                || request.getAdjustment().abs().compareTo(new BigDecimal("99999999.99")) > 0) {
-            return ResponseEntity.badRequest().body(Map.of(
-                    "error", "Stock adjustment must be non-zero, at most 99999999.99, and have no more than two decimal places"
-            ));
+    public ResponseEntity<?> receiveBatch(
+            @PathVariable Integer productId,
+            @RequestBody ReceiveBatchRequest request) {
+        String validationError = request == null ? "Batch details are required" : request.validate();
+        if (validationError != null) {
+            return ResponseEntity.badRequest().body(Map.of("error", validationError));
         }
 
         Product product = productRepository.findById(productId).orElse(null);
@@ -72,46 +117,64 @@ public class ProductController {
             return ResponseEntity.status(404).body(Map.of("error", "Product not found"));
         }
 
-        BigDecimal adjustment = request.getAdjustment();
         LocalDateTime now = LocalDateTime.now();
-        if (adjustment.signum() > 0) {
-            InventoryBatch batch = new InventoryBatch();
-            batch.setProductId(productId);
-            batch.setBatchNumber("ADMIN-" + UUID.randomUUID());
-            batch.setSupplierName("Direct Meat Supplier");
-            batch.setInitialQty(adjustment);
-            batch.setRemainingQty(adjustment);
-            batch.setArrivalDate(now);
-            batch.setDeleted(false);
-            batch.setCreatedAt(now);
-            inventoryBatchRepository.save(batch);
-        } else {
-            List<InventoryBatch> batches = inventoryBatchRepository
-                    .findAvailableBatchesForUpdate(productId, BigDecimal.ZERO);
-            BigDecimal quantityToRemove = adjustment.abs();
-            BigDecimal availableQuantity = batches.stream()
-                    .map(InventoryBatch::getRemainingQty)
-                    .reduce(BigDecimal.ZERO, BigDecimal::add);
-            if (availableQuantity.compareTo(quantityToRemove) < 0) {
-                return ResponseEntity.status(409).body(Map.of("error", "Cannot reduce stock below zero"));
-            }
+        InventoryBatch batch = new InventoryBatch();
+        batch.setProductId(productId);
+        batch.setBatchNumber(request.getBatchNumber().trim());
+        batch.setSupplierName(request.getSupplierNameOrDefault());
+        batch.setInitialQty(request.getQuantity());
+        batch.setRemainingQty(request.getQuantity());
+        batch.setArrivalDate(now);
+        batch.setExpirationDate(request.getExpirationDate());
+        batch.setDeleted(false);
+        batch.setCreatedAt(now);
+        InventoryBatch savedBatch = inventoryBatchRepository.save(batch);
+        return ResponseEntity.ok(Map.of(
+                "message", "New inventory batch received",
+                "batchId", savedBatch.getId()));
+    }
 
-            for (InventoryBatch batch : batches) {
-                if (quantityToRemove.compareTo(BigDecimal.ZERO) <= 0) {
-                    break;
-                }
+    @PutMapping("/admin/products/{productId}/batches/{batchId}/expiration")
+    @Transactional
+    public ResponseEntity<?> updateBatchExpiration(
+            @PathVariable Integer productId,
+            @PathVariable Integer batchId,
+            @RequestBody UpdateBatchExpirationRequest request) {
+        if (request == null || request.getExpirationDate() == null) {
+            return ResponseEntity.badRequest().body(Map.of("error", "An expiry date is required"));
+        }
+        InventoryBatch batch = inventoryBatchRepository.findByIdAndProductId(batchId, productId).orElse(null);
+        if (batch == null) {
+            return ResponseEntity.status(404).body(Map.of("error", "Batch not found for this product"));
+        }
+        batch.setExpirationDate(request.getExpirationDate());
+        inventoryBatchRepository.save(batch);
+        return ResponseEntity.ok(Map.of(
+                "message", "Batch expiry date updated",
+                "batchId", batchId,
+                "expirationDate", request.getExpirationDate().toString()));
+    }
 
-                BigDecimal deduction = batch.getRemainingQty().min(quantityToRemove);
-                batch.setRemainingQty(batch.getRemainingQty().subtract(deduction));
-                quantityToRemove = quantityToRemove.subtract(deduction);
-                inventoryBatchRepository.save(batch);
-            }
+    @PutMapping("/products/{productId}/visibility")
+    @Transactional
+    public ResponseEntity<?> updateProductVisibility(
+            @PathVariable Integer productId,
+            @RequestBody ProductVisibilityRequest request) {
+        if (request == null || request.getVisible() == null) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Visibility must be true or false"));
         }
 
+        Product product = productRepository.findById(productId).orElse(null);
+        if (product == null || Boolean.TRUE.equals(product.getDeleted())) {
+            return ResponseEntity.status(404).body(Map.of("error", "Product not found"));
+        }
+
+        product.setVisible(request.getVisible());
+        productRepository.save(product);
         return ResponseEntity.ok(Map.of(
-                "message", "Stock adjusted successfully",
+                "message", request.getVisible() ? "Product is now shown in the storefront" : "Product is now hidden from the storefront",
                 "productId", productId,
-                "adjustment", adjustment
+                "visible", request.getVisible()
         ));
     }
 
@@ -149,6 +212,7 @@ public class ProductController {
             batch.setInitialQty(request.getInitialQty());
             batch.setRemainingQty(request.getInitialQty());
             batch.setArrivalDate(now);
+            batch.setExpirationDate(request.getExpirationDate());
             batch.setDeleted(false);
             batch.setCreatedAt(now);
             InventoryBatch savedBatch = inventoryBatchRepository.save(batch);
@@ -164,7 +228,7 @@ public class ProductController {
     }
 
     @DeleteMapping("/inventory/{id}")
-    public ResponseEntity archiveBatch(@PathVariable Integer id) {
+    public ResponseEntity<Map<String, String>> archiveBatch(@PathVariable Integer id) {
         InventoryBatch batch = inventoryBatchRepository.findById(id).orElse(null);
 
         if (batch != null) {
@@ -177,11 +241,62 @@ public class ProductController {
     }
 }
 
-class AdjustStockRequest {
-    private BigDecimal adjustment;
+class ProductVisibilityRequest {
+    private Boolean visible;
 
-    public BigDecimal getAdjustment() { return adjustment; }
-    public void setAdjustment(BigDecimal adjustment) { this.adjustment = adjustment; }
+    public Boolean getVisible() { return visible; }
+    public void setVisible(Boolean visible) { this.visible = visible; }
+}
+
+class ReceiveBatchRequest {
+    private String batchNumber;
+    private String supplierName;
+    private BigDecimal quantity;
+    private LocalDate expirationDate;
+
+    public String validate() {
+        if (batchNumber == null || batchNumber.isBlank() || batchNumber.trim().length() > 50) {
+            return "Batch number is required and must be 50 characters or fewer";
+        }
+        if (supplierName != null && supplierName.trim().length() > 100) {
+            return "Supplier name must be 100 characters or fewer";
+        }
+        if (quantity == null || quantity.compareTo(BigDecimal.ZERO) <= 0
+                || quantity.compareTo(new BigDecimal("99999999.99")) > 0
+                || quantity.stripTrailingZeros().scale() > 2) {
+            return "Quantity must be greater than zero, at most 99999999.99, and have no more than two decimal places";
+        }
+        if (expirationDate == null) {
+            return "Batch expiration date is required";
+        }
+        if (expirationDate.isBefore(LocalDate.now())) {
+            return "Batch expiration date cannot be in the past";
+        }
+        return null;
+    }
+
+    private boolean isBlank(String value) {
+        return value == null || value.isBlank();
+    }
+
+    public String getBatchNumber() { return batchNumber; }
+    public void setBatchNumber(String batchNumber) { this.batchNumber = batchNumber; }
+    public String getSupplierName() { return supplierName; }
+    public void setSupplierName(String supplierName) { this.supplierName = supplierName; }
+    public BigDecimal getQuantity() { return quantity; }
+    public void setQuantity(BigDecimal quantity) { this.quantity = quantity; }
+    public LocalDate getExpirationDate() { return expirationDate; }
+    public void setExpirationDate(LocalDate expirationDate) { this.expirationDate = expirationDate; }
+    public String getSupplierNameOrDefault() {
+        return isBlank(supplierName) ? "Direct Meat Supplier" : supplierName.trim();
+    }
+}
+
+class UpdateBatchExpirationRequest {
+    private LocalDate expirationDate;
+
+    public LocalDate getExpirationDate() { return expirationDate; }
+    public void setExpirationDate(LocalDate expirationDate) { this.expirationDate = expirationDate; }
 }
 
 class AddProductRequest {
@@ -192,6 +307,7 @@ class AddProductRequest {
     private BigDecimal pricePerUnit;
     private String imageUrl;
     private BigDecimal reorderLevel;
+    private LocalDate expirationDate;
     private String batchNumber;
     private String supplierName;
     private BigDecimal initialQty;
@@ -199,6 +315,9 @@ class AddProductRequest {
     public String validate() {
         if (isBlank(name) || isBlank(category) || isBlank(temperatureTier) || isBlank(unit) || isBlank(batchNumber)) {
             return "Name, category, temperature tier, unit, and batch number are required";
+        }
+        if (supplierName != null && supplierName.trim().length() > 100) {
+            return "Supplier name must be 100 characters or fewer";
         }
         if (pricePerUnit == null || pricePerUnit.compareTo(BigDecimal.ZERO) < 0) {
             return "Price must be zero or greater";
@@ -208,6 +327,12 @@ class AddProductRequest {
         }
         if (initialQty == null || initialQty.compareTo(BigDecimal.ZERO) <= 0) {
             return "Initial quantity must be greater than zero";
+        }
+        if (expirationDate == null) {
+            return "Batch expiration date is required";
+        }
+        if (expirationDate.isBefore(LocalDate.now())) {
+            return "Batch expiration date cannot be in the past";
         }
         if (!List.of("Fresh Chilled", "Deep Freeze", "Processed Pack").contains(temperatureTier)) {
             return "Temperature tier is invalid";
@@ -236,6 +361,8 @@ class AddProductRequest {
     public void setImageUrl(String imageUrl) { this.imageUrl = imageUrl; }
     public BigDecimal getReorderLevel() { return reorderLevel; }
     public void setReorderLevel(BigDecimal reorderLevel) { this.reorderLevel = reorderLevel; }
+    public LocalDate getExpirationDate() { return expirationDate; }
+    public void setExpirationDate(LocalDate expirationDate) { this.expirationDate = expirationDate; }
     public String getBatchNumber() { return batchNumber; }
     public void setBatchNumber(String batchNumber) { this.batchNumber = batchNumber; }
     public String getSupplierName() { return supplierName; }
