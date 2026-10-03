@@ -22,6 +22,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.mock.web.MockMultipartFile;
 
 @ExtendWith(MockitoExtension.class)
 class ProductControllerTest {
@@ -32,8 +33,34 @@ class ProductControllerTest {
     private InventoryBatchRepository inventoryBatchRepository;
     @Mock
     private ProductRepository productRepository;
+    @Mock
+    private CloudinaryImageUploadService imageUploadService;
     @InjectMocks
     private ProductController controller;
+
+    @Test
+    void uploadsProductImageAndReturnsItsCloudinaryUrl() {
+        MockMultipartFile image = new MockMultipartFile(
+                "file", "product.png", "image/png",
+                new byte[] {(byte) 0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 0}
+        );
+        when(imageUploadService.upload(image)).thenReturn("https://res.cloudinary.com/demo/image/upload/product.png");
+
+        ResponseEntity<?> response = controller.uploadProductImage(image);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        verify(imageUploadService).upload(image);
+    }
+
+    @Test
+    void rejectsEmptyProductImageUpload() {
+        MockMultipartFile image = new MockMultipartFile("file", "empty.png", "image/png", new byte[0]);
+
+        ResponseEntity<?> response = controller.uploadProductImage(image);
+
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+        verify(imageUploadService, never()).upload(image);
+    }
 
     @Test
     void addingStockCreatesANewInventoryBatch() {

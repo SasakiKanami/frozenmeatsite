@@ -109,7 +109,11 @@
                         </select>
                     </div>
                     <div class="form-group">
-                        <label class="form-label" for="image-url">Product Image URL (optional)</label>
+                        <label class="form-label" for="product-image">Upload Product Image (optional, max 5 MB)</label>
+                        <input type="file" id="product-image" class="form-input" accept="image/jpeg,image/png,image/gif,image/webp">
+                        <p class="image-upload-status" id="image-upload-status" role="status" aria-live="polite"></p>
+                        <img class="image-upload-preview hidden" id="image-upload-preview" alt="Selected product image preview">
+                        <label class="form-label image-url-label" for="image-url">Or enter an image URL</label>
                         <input type="text" id="image-url" class="form-input" placeholder="e.g. ../../assets/pictures/product.png">
                     </div>
                 </div>
@@ -180,8 +184,43 @@
             document.getElementById('add-item-form').reset();
         });
 
+        let imagePreviewUrl = null;
+        const imageInput = document.getElementById('product-image');
+        const imagePreview = document.getElementById('image-upload-preview');
+        const imageUploadStatus = document.getElementById('image-upload-status');
+        const addItemForm = document.getElementById('add-item-form');
+
+        imageInput.addEventListener('change', function() {
+            if (imagePreviewUrl) URL.revokeObjectURL(imagePreviewUrl);
+            imagePreviewUrl = null;
+            imagePreview.removeAttribute('src');
+            imagePreview.classList.add('hidden');
+            imageUploadStatus.textContent = '';
+
+            const file = imageInput.files[0];
+            if (!file) return;
+            if (file.size > 5 * 1024 * 1024) {
+                imageInput.setCustomValidity('Choose an image that is 5 MB or smaller.');
+                imageInput.reportValidity();
+                imageInput.setCustomValidity('');
+                imageInput.value = '';
+                return;
+            }
+            imagePreviewUrl = URL.createObjectURL(file);
+            imagePreview.src = imagePreviewUrl;
+            imagePreview.classList.remove('hidden');
+        });
+
+        addItemForm.addEventListener('reset', function() {
+            imageUploadStatus.textContent = '';
+            imagePreview.classList.add('hidden');
+            imagePreview.removeAttribute('src');
+            if (imagePreviewUrl) URL.revokeObjectURL(imagePreviewUrl);
+            imagePreviewUrl = null;
+        });
+
         // Form Submit Handler
-        document.getElementById('add-item-form').addEventListener('submit', async function(e) {
+        addItemForm.addEventListener('submit', async function(e) {
             e.preventDefault();
 
             const sku = document.getElementById('sku-code').value.trim();
@@ -192,12 +231,31 @@
             const lowLimit = parseFloat(document.getElementById('low-stock-limit').value);
             const unit = document.getElementById('unit').value;
             const zone = document.getElementById('storage-zone').value;
-            const imageUrl = document.getElementById('image-url').value.trim() || null;
+            let imageUrl = document.getElementById('image-url').value.trim() || null;
+            const imageFile = imageInput.files[0];
 
             const submitButton = e.currentTarget.querySelector('button[type="submit"]');
             submitButton.disabled = true;
 
             try {
+                if (imageFile) {
+                    imageUploadStatus.textContent = 'Uploading image to Cloudinary...';
+                    const formData = new FormData();
+                    formData.append('file', imageFile);
+                    const uploadResponse = await fetch('/api/products/images', {
+                        method: 'POST',
+                        body: formData
+                    });
+                    const uploadResult = await uploadResponse.json();
+                    if (!uploadResponse.ok) {
+                        throw new Error(uploadResult.error || 'Unable to upload product image');
+                    }
+                    imageUrl = uploadResult.imageUrl;
+                    document.getElementById('image-url').value = imageUrl;
+                    imageInput.value = '';
+                    imageUploadStatus.textContent = 'Image uploaded. Saving product...';
+                }
+
                 const response = await fetch('/api/products', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -247,6 +305,7 @@
                 // Reset form upon successful submission
                 document.getElementById('add-item-form').reset();
             } catch (error) {
+                imageUploadStatus.textContent = error.message;
                 alert(error.message);
             } finally {
                 submitButton.disabled = false;

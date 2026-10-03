@@ -3,8 +3,10 @@ package com.example.demo;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.http.MediaType;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -23,6 +25,30 @@ public class ProductController {
 
     @Autowired
     private ProductRepository productRepository;
+
+    @Autowired
+    private CloudinaryImageUploadService imageUploadService;
+
+    @PostMapping(value = "/products/images", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<?> uploadProductImage(@RequestParam("file") MultipartFile file) {
+        if (file == null || file.isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Choose an image file to upload"));
+        }
+        if (file.getSize() > 5L * 1024 * 1024) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Image must be 5 MB or smaller"));
+        }
+
+        try {
+            String imageUrl = imageUploadService.upload(file);
+            return ResponseEntity.ok(Map.of("imageUrl", imageUrl));
+        } catch (InvalidProductImageException exception) {
+            return ResponseEntity.badRequest().body(Map.of("error", exception.getMessage()));
+        } catch (CloudinaryNotConfiguredException exception) {
+            return ResponseEntity.status(503).body(Map.of("error", exception.getMessage()));
+        } catch (CloudinaryImageUploadException exception) {
+            return ResponseEntity.status(502).body(Map.of("error", exception.getMessage()));
+        }
+    }
 
     @GetMapping("/products")
     public List getCatalog() {
