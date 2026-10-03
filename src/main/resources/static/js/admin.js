@@ -56,8 +56,21 @@ function renderInventory(products) {
             <td class="stock-qty-value">${quantity} ${product.unit}</td>
             <td>
                 <div class="stock-adjust">
+                    <button class="btn-restock" type="button" data-stock-adjustment="-1" data-product-id="${escapeHtml(product.productId)}" aria-label="Remove 1 ${escapeHtml(product.unit)} of ${escapeHtml(product.name)}">-1</button>
+                    <button class="btn-restock" type="button" data-stock-adjustment="1" data-product-id="${escapeHtml(product.productId)}" aria-label="Add 1 ${escapeHtml(product.unit)} of ${escapeHtml(product.name)}">+1</button>
+                </div>
+            </td>
+            <td>
+                <div class="stock-adjust">
                     <button class="btn-restock" type="button" data-stock-adjustment="-10" data-product-id="${escapeHtml(product.productId)}" aria-label="Remove 10 ${escapeHtml(product.unit)} of ${escapeHtml(product.name)}">-10</button>
                     <button class="btn-restock" type="button" data-stock-adjustment="10" data-product-id="${escapeHtml(product.productId)}" aria-label="Add 10 ${escapeHtml(product.unit)} of ${escapeHtml(product.name)}">+10</button>
+                </div>
+            </td>
+            <td>
+                <div class="stock-adjust stock-custom-adjust">
+                    <input class="stock-custom-input" type="number" min="${product.unit === 'kg' ? '0.01' : '1'}" step="${product.unit === 'kg' ? '0.01' : '1'}" required data-custom-stock-amount="${escapeHtml(product.productId)}" aria-label="Custom stock amount for ${escapeHtml(product.name)}">
+                    <button class="btn-restock" type="button" data-custom-stock-adjustment="add" data-product-id="${escapeHtml(product.productId)}" aria-label="Add custom amount of ${escapeHtml(product.name)}">Add</button>
+                    <button class="btn-restock" type="button" data-custom-stock-adjustment="remove" data-product-id="${escapeHtml(product.productId)}" aria-label="Remove custom amount of ${escapeHtml(product.name)}">Remove</button>
                 </div>
             </td>
         `;
@@ -83,7 +96,7 @@ async function loadInventory() {
         renderInventory(await response.json());
     } catch (error) {
         if (tableBody) {
-            tableBody.innerHTML = '<tr><td colspan="5">Inventory is temporarily unavailable.</td></tr>';
+            tableBody.innerHTML = '<tr><td colspan="7">Inventory is temporarily unavailable.</td></tr>';
         }
         console.error('Unable to load admin inventory:', error);
     }
@@ -98,7 +111,7 @@ function setStockAdjustmentMessage(message, isError = false) {
 
 async function adjustStock(productId, adjustment, button) {
     const row = button.closest('tr');
-    const rowButtons = row?.querySelectorAll('[data-stock-adjustment]') ?? [];
+    const rowButtons = row?.querySelectorAll('[data-stock-adjustment], [data-custom-stock-adjustment]') ?? [];
     rowButtons.forEach(rowButton => { rowButton.disabled = true; });
     setStockAdjustmentMessage('');
 
@@ -119,6 +132,22 @@ async function adjustStock(productId, adjustment, button) {
     } finally {
         rowButtons.forEach(rowButton => { rowButton.disabled = false; });
     }
+}
+
+function adjustCustomStock(button) {
+    const input = button.closest('tr')?.querySelector('[data-custom-stock-amount]');
+    if (!input || !input.reportValidity()) return;
+
+    const amount = Number(input.value);
+    if (!Number.isFinite(amount) || amount <= 0) {
+        input.setCustomValidity('Enter an amount greater than zero.');
+        input.reportValidity();
+        input.setCustomValidity('');
+        return;
+    }
+
+    const adjustment = button.dataset.customStockAdjustment === 'remove' ? -amount : amount;
+    adjustStock(Number(button.dataset.productId), adjustment, button);
 }
 
 // ---- Orders (GET /api/orders) ----
@@ -150,6 +179,11 @@ function buildOrderRow(order) {
     if (order.deliveryAddress) fulfillment += `<div class="order-items-list">${escapeHtml(order.deliveryAddress)}</div>`;
     if (order.deliveryNotes) fulfillment += `<div class="order-items-list">Note: ${escapeHtml(order.deliveryNotes)}</div>`;
 
+    const originalPaymentStatus = String(order.paymentStatus || 'unpaid');
+    const paymentStatus = originalPaymentStatus.toLowerCase();
+    const legacyStatusOption = ['paid', 'unpaid'].includes(paymentStatus)
+        ? ''
+        : `<option value="${escapeHtml(paymentStatus)}" selected disabled>${escapeHtml(order.paymentStatus)}</option>`;
     const row = document.createElement('tr');
     row.innerHTML = `
         <td class="ref-pill">${escapeHtml(order.referenceId)}</td>
@@ -157,10 +191,45 @@ function buildOrderRow(order) {
         <td><div class="cell-product-name">${escapeHtml(order.customerName)}</div><div class="order-items-list">${customerLines.join('<br>')}</div></td>
         <td class="order-items-list">${items || '—'}</td>
         <td>${fulfillment}</td>
-        <td>${escapeHtml(order.paymentMethod)}<div class="order-items-list">Status: ${escapeHtml(order.paymentStatus)}</div></td>
+        <td>${escapeHtml(order.paymentMethod)}</td>
+        <td>
+            <select class="payment-status-select" data-payment-status data-order-id="${escapeHtml(order.id)}" data-current-status="${escapeHtml(paymentStatus)}" aria-label="Payment status for ${escapeHtml(order.referenceId)}">
+                ${legacyStatusOption}
+                <option value="unpaid" ${paymentStatus === 'unpaid' ? 'selected' : ''}>Unpaid</option>
+                <option value="paid" ${paymentStatus === 'paid' ? 'selected' : ''}>Paid</option>
+            </select>
+            <div class="payment-status-message" role="status" aria-live="polite"></div>
+        </td>
         <td class="stock-qty-value">₱${Number(order.totalAmount).toFixed(2)}</td>
     `;
     return row;
+}
+
+async function updatePaymentStatus(select) {
+    const previousStatus = select.dataset.currentStatus;
+    const message = select.closest('td').querySelector('.payment-status-message');
+    select.disabled = true;
+    message.textContent = '';
+    message.classList.remove('error');
+
+    try {
+        const response = await fetch(`/api/orders/${encodeURIComponent(select.dataset.orderId)}/payment-status`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ paymentStatus: select.value })
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(result.error || `Payment status update failed: ${response.status}`);
+        select.dataset.currentStatus = select.value;
+        message.textContent = 'Saved';
+    } catch (error) {
+        select.value = previousStatus;
+        message.textContent = error.message || 'Unable to update payment status.';
+        message.classList.add('error');
+        console.error('Unable to update order payment status:', error);
+    } finally {
+        select.disabled = false;
+    }
 }
 
 function fillOrderTable(bodyId, emptyMessageId, orders) {
@@ -219,9 +288,19 @@ document.addEventListener('DOMContentLoaded', () => {
     updateAdminClock();
     setInterval(updateAdminClock, 1000);
     document.getElementById('inventory-table-body')?.addEventListener('click', event => {
-        const button = event.target.closest('[data-stock-adjustment]');
+        const button = event.target.closest('[data-stock-adjustment], [data-custom-stock-adjustment]');
         if (!button) return;
-        adjustStock(Number(button.dataset.productId), Number(button.dataset.stockAdjustment), button);
+        if (button.hasAttribute('data-custom-stock-adjustment')) {
+            adjustCustomStock(button);
+        } else {
+            adjustStock(Number(button.dataset.productId), Number(button.dataset.stockAdjustment), button);
+        }
+    });
+    ['orders-table-body', 'account-orders-table-body'].forEach(bodyId => {
+        document.getElementById(bodyId)?.addEventListener('change', event => {
+            const select = event.target.closest('[data-payment-status]');
+            if (select) updatePaymentStatus(select);
+        });
     });
     loadInventory();
     loadOrders();

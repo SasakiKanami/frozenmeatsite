@@ -119,10 +119,11 @@
                 <div class="admin-panel-header">
                     <div>
                         <div class="admin-panel-title">Cold Storage Inventory</div>
-                        <div class="admin-panel-sub">Adjust counts manually, or log a restocked batch.</div>
+                        <div class="admin-panel-sub">Adjust by one, ten, or a custom quantity. Custom amounts can include up to two decimal places for kilogram stock. Changes are saved to stock batches.</div>
                     </div>
             
                 </div>
+                <p class="stock-adjustment-message" id="stock-adjustment-message" role="status" aria-live="polite"></p>
                 <div class="table-scroll">
                     <table class="admin-table">
                         <thead>
@@ -131,8 +132,9 @@
                                 <th>Unit Price</th>
                                 <th>Status</th>
                                 <th>Stock on Hand</th>
+                                <th>Edit Stock by ones</th>
                                 <th>Edit Stock by tens</th>
-
+                                <th>Custom adjustment</th>
                             </tr>
                         </thead>
                         <tbody id="inventory-table-body">
@@ -163,6 +165,7 @@
                                 <th>Items</th>
                                 <th>Fulfillment</th>
                                 <th>Payment</th>
+                                <th>Status</th>
                                 <th>Total</th>
                             </tr>
                         </thead>
@@ -194,6 +197,7 @@
                                 <th>Items</th>
                                 <th>Fulfillment</th>
                                 <th>Payment</th>
+                                <th>Status</th>
                                 <th>Total</th>
                             </tr>
                         </thead>

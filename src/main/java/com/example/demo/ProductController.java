@@ -33,9 +33,12 @@ public class ProductController {
     @Transactional
     public ResponseEntity<?> adjustStock(@PathVariable Integer productId, @RequestBody AdjustStockRequest request) {
         if (request == null || request.getAdjustment() == null
-                || (request.getAdjustment().compareTo(BigDecimal.TEN) != 0
-                && request.getAdjustment().compareTo(BigDecimal.TEN.negate()) != 0)) {
-            return ResponseEntity.badRequest().body(Map.of("error", "Stock adjustment must be exactly 10 or -10"));
+                || request.getAdjustment().signum() == 0
+                || request.getAdjustment().stripTrailingZeros().scale() > 2
+                || request.getAdjustment().abs().compareTo(new BigDecimal("99999999.99")) > 0) {
+            return ResponseEntity.badRequest().body(Map.of(
+                    "error", "Stock adjustment must be non-zero, at most 99999999.99, and have no more than two decimal places"
+            ));
         }
 
         Product product = productRepository.findById(productId).orElse(null);

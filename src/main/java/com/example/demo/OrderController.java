@@ -2,8 +2,12 @@ package com.example.demo;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Sort;
+import org.springframework.http.ResponseEntity;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -12,6 +16,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
@@ -108,4 +113,37 @@ public class OrderController {
         }
         return response;
     }
+
+    @PutMapping("/orders/{orderId}/payment-status")
+    public ResponseEntity<Map<String, String>> updatePaymentStatus(
+            @PathVariable Integer orderId,
+            @RequestBody PaymentStatusRequest request) {
+        if (request == null || request.getPaymentStatus() == null) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Payment status must be paid or unpaid"));
+        }
+
+        String paymentStatus = request.getPaymentStatus().trim().toLowerCase(Locale.ROOT);
+        if (!paymentStatus.equals("paid") && !paymentStatus.equals("unpaid")) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Payment status must be paid or unpaid"));
+        }
+
+        Order order = orderRepository.findById(orderId).orElse(null);
+        if (order == null || Boolean.TRUE.equals(order.getDeleted())) {
+            return ResponseEntity.status(404).body(Map.of("error", "Order not found"));
+        }
+
+        order.setPaymentStatus(paymentStatus);
+        orderRepository.save(order);
+        return ResponseEntity.ok(Map.of(
+                "message", "Payment status updated",
+                "paymentStatus", paymentStatus
+        ));
+    }
+}
+
+class PaymentStatusRequest {
+    private String paymentStatus;
+
+    public String getPaymentStatus() { return paymentStatus; }
+    public void setPaymentStatus(String paymentStatus) { this.paymentStatus = paymentStatus; }
 }

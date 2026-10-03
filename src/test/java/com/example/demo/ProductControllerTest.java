@@ -58,6 +58,34 @@ class ProductControllerTest {
     }
 
     @Test
+    void addingOneUnitCreatesANewInventoryBatch() {
+        when(productRepository.findById(7)).thenReturn(Optional.of(activeProduct(7)));
+        when(inventoryBatchRepository.save(any(InventoryBatch.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        ResponseEntity<?> response = controller.adjustStock(7, adjustment(BigDecimal.ONE));
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        ArgumentCaptor<InventoryBatch> batchCaptor = ArgumentCaptor.forClass(InventoryBatch.class);
+        verify(inventoryBatchRepository).save(batchCaptor.capture());
+        assertEquals(BigDecimal.ONE, batchCaptor.getValue().getRemainingQty());
+    }
+
+    @Test
+    void addingCustomFractionalAmountCreatesANewInventoryBatch() {
+        when(productRepository.findById(7)).thenReturn(Optional.of(activeProduct(7)));
+        when(inventoryBatchRepository.save(any(InventoryBatch.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        ResponseEntity<?> response = controller.adjustStock(7, adjustment(new BigDecimal("2.50")));
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        ArgumentCaptor<InventoryBatch> batchCaptor = ArgumentCaptor.forClass(InventoryBatch.class);
+        verify(inventoryBatchRepository).save(batchCaptor.capture());
+        assertEquals(new BigDecimal("2.50"), batchCaptor.getValue().getRemainingQty());
+    }
+
+    @Test
     void reducingStockConsumesBatchesInFifoOrder() {
         when(productRepository.findById(7)).thenReturn(Optional.of(activeProduct(7)));
         InventoryBatch first = batch(7, "FIRST", "6");
@@ -91,8 +119,16 @@ class ProductControllerTest {
     }
 
     @Test
-    void rejectsAdjustmentsOtherThanTenUnits() {
-        ResponseEntity<?> response = controller.adjustStock(7, adjustment(new BigDecimal("5")));
+    void rejectsZeroAdjustment() {
+        ResponseEntity<?> response = controller.adjustStock(7, adjustment(BigDecimal.ZERO));
+
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+        verify(productRepository, never()).findById(7);
+    }
+
+    @Test
+    void rejectsCustomAdjustmentWithMoreThanTwoDecimalPlaces() {
+        ResponseEntity<?> response = controller.adjustStock(7, adjustment(new BigDecimal("1.001")));
 
         assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
         verify(productRepository, never()).findById(7);

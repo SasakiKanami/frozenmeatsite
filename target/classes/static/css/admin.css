@@ -4,6 +4,10 @@
    ========================================================================== */
 
 /* --- Compact Admin Header (replaces the customer hero) --- */
+.container {
+    max-width: 1360px;
+}
+
 .admin-header {
     position: relative;
     background: radial-gradient(circle at 30% 20%, #16365c 0%, #0c203b 55%, #071322 100%);
@@ -408,6 +412,34 @@
     gap: 0.5rem;
 }
 
+.stock-adjust.stock-custom-adjust {
+    flex-wrap: wrap;
+}
+
+.stock-custom-input {
+    width: 5.25rem;
+    min-width: 0;
+    border: 1px solid var(--glass-border-ice);
+    border-radius: 7px;
+    background: rgba(255, 255, 255, 0.85);
+    color: var(--navy-deep);
+    padding: 0.4rem 0.45rem;
+    font: inherit;
+    font-size: 0.8rem;
+}
+
+.stock-adjustment-message {
+    min-height: 1.25rem;
+    margin: -0.75rem 0 1rem;
+    color: var(--fresh-chilled-text);
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.stock-adjustment-message.error {
+    color: #dc2626;
+}
+
 .stock-qty-value {
     min-width: 46px;
     text-align: center;
@@ -443,6 +475,33 @@
 .order-items-list {
     font-size: 0.8rem;
     color: var(--text-muted);
+}
+
+.payment-status-select {
+    border: 1px solid var(--glass-border-ice);
+    border-radius: 7px;
+    background: rgba(255, 255, 255, 0.85);
+    color: var(--navy-deep);
+    padding: 0.45rem 0.55rem;
+    font: inherit;
+    font-size: 0.85rem;
+    cursor: pointer;
+}
+
+.payment-status-select:disabled {
+    cursor: wait;
+    opacity: 0.65;
+}
+
+.payment-status-message {
+    min-height: 1rem;
+    margin-top: 0.2rem;
+    color: var(--fresh-chilled-text);
+    font-size: 0.75rem;
+}
+
+.payment-status-message.error {
+    color: #dc2626;
 }
 
 .ref-pill {
