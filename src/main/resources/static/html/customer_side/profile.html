@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Profile | J&R Frozen Goods</title>
+    <link rel="stylesheet" href="../../css/styles.css">
+    <link rel="stylesheet" href="../../css/mobile-styles.css" media="(max-width: 461px)">
+</head>
+<body>
+    <header class="navbar">
+        <div class="nav-container">
+            <div class="brand">
+                <span class="brand-title">J&R Frozen Goods</span>
+                <span class="brand-sub">Carni-Flow Cold Storage</span>
+            </div>
+            <nav class="nav-links">
+                <a href="index.html" class="cart-pill">Back to Catalog</a>
+            </nav>
+        </div>
+    </header>
+    <main class="container">
+        <section class="frost-panel">
+            <h1 class="card-heading">My Profile</h1>
+            <p class="card-sub">Save your contact and delivery details for faster checkout.</p>
+            <p id="profile-message" role="status" aria-live="polite"></p>
+            <form id="profile-form">
+                <div class="form-group">
+                    <label class="form-label" for="profile-name">Full name</label>
+                    <input class="form-input" id="profile-name" maxlength="100" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="profile-email">Account email</label>
+                    <input class="form-input" id="profile-email" type="email" readonly>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="profile-phone">Mobile contact</label>
+                    <input class="form-input" id="profile-phone" type="tel" maxlength="30">
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="profile-address">Street / house address</label>
+                    <textarea class="form-input" id="profile-address" rows="2" maxlength="500"></textarea>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="profile-city">City</label>
+                    <input class="form-input" id="profile-city" maxlength="100">
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="profile-landmark">Landmark / delivery note</label>
+                    <textarea class="form-input" id="profile-landmark" rows="2" maxlength="500"></textarea>
+                </div>
+                <button class="btn-submit-order" type="submit">Save Profile</button>
+            </form>
+        </section>
+    </main>
+    <footer class="footer"><p>J&R Frozen Goods • Sangandaan, Caloocan City</p></footer>
+    <script src="../../js/csrf.js"></script>
+    <script src="../../js/profile.js"></script>
+</body>
+</html>

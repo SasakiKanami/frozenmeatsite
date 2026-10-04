@@ -1,0 +1,13 @@
+com\example\demo\OrderItemRepository.class
+com\example\demo\UserRepository.class
+com\example\demo\Order.class
+com\example\demo\OrderController.class
+com\example\demo\ProductStock.class
+com\example\demo\ProductStockRepository.class
+com\example\demo\Product.class
+com\example\demo\User.class
+com\example\demo\DemoApplication.class
+com\example\demo\InventoryBatch.class
+com\example\demo\OrderRepository.class
+com\example\demo\OrderItem.class
+com\example\demo\ProductRepository.class

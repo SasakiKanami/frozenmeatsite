@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Product Batches | J&R Frozen Goods</title>
+    <link rel="stylesheet" href="../../css/styles.css">
+    <link rel="stylesheet" href="../../css/admin.css">
+</head>
+<body>
+    <header class="navbar">
+        <div class="nav-container">
+            <div class="brand">
+                <span class="brand-title">J&R Frozen Goods</span>
+                <span class="brand-sub">Carni-Flow Admin Panel</span>
+            </div>
+            <nav class="nav-links">
+                <a href="admin.html" class="nav-link">Back to Inventory</a>
+                <span class="divider">|</span> 
+                <a href="../customer_side/index.html" target="_blank" class="nav-link">View Storefront</a>
+                <span class="divider">|</span> 
+                <a href="deleted_items.html" class="nav-link">View Deleted Items</a>
+            </nav>
+        </div>
+    </header>
+
+    <main class="container product-batches-page">
+        <a class="batch-back-link" href="admin.html">← Back to inventory</a>
+        <p class="stock-adjustment-message" id="batch-page-message" role="status" aria-live="polite"></p>
+
+        <section class="admin-panel product-summary-panel" id="product-summary" aria-live="polite">
+            <p>Loading product details…</p>
+        </section>
+
+        <section class="admin-panel">
+            <div class="admin-panel-header">
+                <div>
+                    <h2 class="admin-panel-title">Product Identifier</h2>
+                    <p class="admin-panel-sub">The SKU identifies this product across all batches. Changing it retires the old SKU so it cannot be reused.</p>
+                </div>
+            </div>
+            <form id="product-sku-form" class="product-identity-form">
+                <div class="form-group">
+                    <label class="form-label" for="product-sku-value">Product SKU</label>
+                    <input class="form-input" id="product-sku-value" maxlength="40" required>
+                </div>
+                <button class="btn-restock" type="submit">Update SKU</button>
+            </form>
+            <div class="product-aliases-wrap">
+                <h3 class="admin-panel-title">Alternate Names</h3>
+                <p class="admin-panel-sub">Use these names to find this same product during stock intake.</p>
+                <div id="product-alias-list" class="product-alias-list"></div>
+                <form id="product-alias-form" class="product-identity-form">
+                    <div class="form-group">
+                        <label class="form-label" for="product-alias-value">Add alternate name</label>
+                        <input class="form-input" id="product-alias-value" maxlength="120" required>
+                    </div>
+                    <button class="btn-restock" type="submit">Add Name</button>
+                </form>
+            </div>
+        </section>
+
+        <section class="admin-panel batch-receive-panel">
+            <div class="admin-panel-header">
+                <div>
+                    <h1 class="admin-panel-title">Receive a New Batch</h1>
+                    <p class="admin-panel-sub">Each stock receipt is recorded as its own batch with its own expiry date. Checkout uses eligible batches in FIFO order.</p>
+                </div>
+            </div>
+            <form id="receive-batch-form">
+                <div class="form-grid batch-form-grid">
+                    <div class="form-group">
+                        <label class="form-label" for="batch-number">Batch / lot number</label>
+                        <input class="form-input" id="batch-number" name="batchNumber" maxlength="50" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="batch-supplier">Supplier</label>
+                        <input class="form-input" id="batch-supplier" name="supplierName" maxlength="100" placeholder="Direct Meat Supplier">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="batch-quantity">Quantity received</label>
+                        <input class="form-input" id="batch-quantity" name="quantity" type="number" min="0.01" max="99999999.99" step="0.01" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="batch-expiration">Expiry date</label>
+                        <input class="form-input" id="batch-expiration" name="expirationDate" type="date" required>
+                    </div>
+                </div>
+                <div class="form-actions">
+                    <button class="btn-submit-order" id="receive-batch-button" type="submit">Receive Batch</button>
+                </div>
+            </form>
+        </section>
+
+        <section class="admin-panel">
+            <div class="admin-panel-header">
+                <div>
+                    <h2 class="admin-panel-title">Inventory Batches</h2>
+                    <p class="admin-panel-sub">Ordered oldest to newest to show FIFO priority. Expired, depleted, and archived batches are shown for traceability but are not available for checkout.</p>
+                </div>
+            </div>
+            <div class="table-scroll">
+                <table class="admin-table batch-table">
+                    <thead>
+                        <tr>
+                            <th>FIFO order</th>
+                            <th>Batch / lot</th>
+                            <th>Supplier</th>
+                            <th>Received</th>
+                            <th>Expires</th>
+                            <th>Received qty</th>
+                            <th>Remaining qty</th>
+                            <th>Batch status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="batch-table-body">
+                        <tr><td colspan="8">Loading batches…</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+
+    <footer class="footer">
+        <p>J&R Frozen Goods • Sangandaan, Caloocan City • Admin Panel</p>
+    </footer>
+
+    <script src="../../js/csrf.js"></script>
+    <script src="../../js/product-batches.js"></script>
+</body>
+</html>

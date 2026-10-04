@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reserve Checkout | J&R Frozen Goods</title>
+    <!-- Purely external CSS -->
+    <link rel="stylesheet" href="../../css/styles.css">
+    <link rel="stylesheet" href="../../css/mobile-styles.css" media="(max-width: 461px)">
+</head>
+<body>
+
+    <!-- Chilled Navigation -->
+    <header class="navbar">
+        <div class="nav-container">
+            <div class="brand">
+                <span class="brand-title">J&R Frozen Goods</span>
+                <span class="brand-sub">
+
+                    Carni-Flow Cold Storage
+                </span>
+            </div>
+            <nav class="nav-links">
+                <a href="index.html" class="catalog-pill">← Back <span class="hide-text">to Catalog</span></a>
+            </nav>
+        </div>
+    </header>
+
+    <main class="container">
+
+        <!-- Frosted Glass Two-Column Layout -->
+        <section class="checkout-layout" id="checkout-card">
+
+            <!-- Left Box: Basket Summary -->
+            <div class="frost-panel">
+                <h2 class="card-heading">Your Basket</h2>
+
+                <div id="cart-items-container" class="cart-items-list">
+                    <!-- Populated by main.js -->
+                </div>
+
+                <div class="cart-total-bar">
+                    <span>Total:</span>
+                    <strong id="cart-total-price" class="total-highlight">₱0.00</strong>
+                </div>
+                <p class="card-sub" id="delivery-fee-preview">Local delivery fee: ₱0.00</p>
+                <div class="gcash-qr-panel hidden" id="gcash-qr-panel">
+                    <h3 class="gcash-qr-heading">Pay with GCash</h3>
+                    <p class="gcash-qr-instructions">Scan this QR code to pay, then enter your GCash transaction reference on the right.</p>
+                    <img class="gcash-qr-image" src="../../assets/pictures/gcash_qr.jpg" alt="J&R Frozen Goods GCash payment QR code">
+                </div>
+            </div>
+
+            <!-- Right Box: Guest Information -->
+            <div class="frost-panel">
+                <h2 class="card-heading">Customer Information</h2>
+                <p class="card-sub">Guest checkout is available. Signed-in customers can save their contact and delivery details in My Profile.</p>
+
+                <form onsubmit="handleGuestCheckout(event)">
+                    <div class="form-group">
+                        <label for="guestName" class="form-label">Full Name *</label>
+                        <input type="text" id="guestName" class="form-input" placeholder="e.g., Juan Dela Cruz" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="guestPhone" class="form-label">Mobile Contact Number *</label>
+                        <input type="tel" id="guestPhone" class="form-input" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="guestEmail" class="form-label">Email Address</label>
+                        <input type="email" id="guestEmail" class="form-input" placeholder="e.g., juan@example.com">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="fulfillmentType" class="form-label">Fulfillment Method *</label>
+                        <select id="fulfillmentType" class="form-input" required>
+                            <option value="" disabled selected hidden></option>
+                            <option value="Storefront Pickup">Storefront Pickup</option>
+                            <option value="Same-Day Delivery">Same-Day Local Area Delivery</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group" id="delivery-address-group" hidden>
+                        <label for="deliveryAddress" class="form-label">Delivery Address *</label>
+                        <textarea id="deliveryAddress" class="form-input" rows="3" placeholder="House number, street, barangay, city"></textarea>
+                    </div>
+
+                    <div class="form-group" id="delivery-notes-group" hidden>
+                        <label for="deliveryNotes" class="form-label">Delivery Notes</label>
+                        <textarea id="deliveryNotes" class="form-input" rows="2" placeholder="Landmark or delivery instructions"></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="paymentMethod" class="form-label">Payment Preference *</label>
+                        <select id="paymentMethod" class="form-input" required>
+                            <option value="" disabled selected hidden></option>
+                            <option value="Cash on Pickup / Delivery">Cash on Pickup / Delivery</option>
+                            <option value="GCash Transfer">GCash Transfer</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group hidden" id="gcash-reference-group">
+                        <label for="gcash-reference" class="form-label">GCash Payment Reference Number *</label>
+                        <input type="text" id="gcash-reference" class="form-input" maxlength="100" autocomplete="off">
+                        <small class="gcash-reference-help">Your order will remain pending until staff verify your payment.</small>
+                    </div>
+
+                    <button type="submit" class="btn-submit-order">Confirm Order</button>
+                </form>
+            </div>
+
+        </section>
+
+        <!-- Confirmation Receipt (Shown after checkout) -->
+        <section class="confirmation-box hidden" id="confirmation-card">
+            <div class="freeze-icon-wrap">
+                <svg class="icon-svg" viewBox="0 0 24 24">
+                    <path d="M12 2v20M2 12h20M4.93 4.93l14.14 14.14M4.93 19.07L19.07 4.93" />
+                </svg>
+            </div>
+            <h2 class="conf-title">Reservation Placed in Cold Storage!</h2>
+            <p class="conf-sub">Your items are logged in our FIFO queue. Present your Reference ID at the store or when receiving delivery.</p>
+
+            <div class="receipt-details">
+                <div class="receipt-line"><span>Reference ID:</span> <strong id="conf-ref" class="ref-code">#CF-0000</strong></div>
+                <div class="receipt-line"><span>Customer:</span> <strong id="conf-name">---</strong></div>
+                <div class="receipt-line"><span>Contact:</span> <span id="conf-phone">---</span></div>
+                <div class="receipt-line"><span>Fulfillment:</span> <span id="conf-fulfillment">---</span></div>
+                <div class="receipt-line hidden" id="conf-delivery-status-line"><span>Delivery status:</span> <span id="conf-delivery-status" class="delivery-status-badge">---</span></div>
+                <div class="receipt-line"><span>Payment:</span> <span id="conf-payment">---</span></div>
+                <div class="receipt-line hidden" id="conf-payment-reference-line"><span>GCash reference:</span> <span id="conf-payment-reference">---</span></div>
+                <div class="receipt-line hidden" id="conf-payment-status-line"><span>Payment status:</span> <span id="conf-payment-status" class="payment-status-badge">---</span></div>
+                <div class="receipt-line"><span>Delivery fee:</span> <span id="conf-delivery-fee">₱0.00</span></div>
+                <div class="receipt-line total-line"><span>Total Due:</span> <strong id="conf-total">₱0.00</strong></div>
+            </div>
+
+            <p class="conf-delivery-tracking-note hidden" id="conf-delivery-tracking-note" role="status" aria-live="polite">
+                Keep this page open to follow your delivery status until your order is delivered.
+            </p>
+            <p class="conf-payment-tracking-note hidden" id="conf-payment-tracking-note" role="status" aria-live="polite">
+                GCash payment is due within 12 hours. Keep this page open to see when staff confirm payment.
+            </p>
+
+            <div class="receipt-actions">
+                <a href="index.html" class="btn-ice">Return to Cold Catalog</a>
+            </div>
+        </section>
+
+    </main>
+
+    <footer class="footer">
+        <p>J&R Frozen Goods • Sangandaan, Caloocan City</p>
+    </footer>
+
+    <script src="../../js/csrf.js"></script>
+    <script src="../../js/main.js"></script>
+</body>
+</html>

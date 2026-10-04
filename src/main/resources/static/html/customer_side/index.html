@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>J&R Frozen Goods | Sub-Zero Catalog</title>
+    <!-- Purely external CSS -->
+    <link rel="stylesheet" href="../../css/styles.css"> <!--Changed the file path, added folders for organization-->
+    <link rel="stylesheet" href="../../css/mobile-styles.css" media="(max-width: 375px)">
+</head>
+<body>
+
+    <!-- Chilled Navigation -->
+    <header class="navbar">
+        <div class="nav-container">
+            <div class="brand">
+                <span class="brand-title">J&Rs Frozen Goods</span>
+                <span class="brand-sub">
+                    <!-- <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12 2v20M2 12h20M4.93 4.93l14.14 14.14M4.93 19.07L19.07 4.93" />
+                    </svg> -->
+                    Carni-Flow Cold Storage
+                </span>
+            </div>
+            <nav class="nav-links">
+                <a href="my_orders.html" class="cart-pill hidden" id="my-orders-link">My Orders</a>
+                <a href="profile.html" class="cart-pill hidden" id="profile-link">My Profile</a>
+
+                <a href="order.html" class="cart-pill">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4zM3 6h18M16 10a4 4 0 0 1-8 0" />
+                    </svg>
+                    <span class="basket-label">Basket</span> <span id="cart-count">0</span>
+                </a>
+                <a href="../login/login.html" class="cart-pill" id="auth-link">Login / Create Account</a>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Hero with Breath Fog and Snowfall Motion -->
+    <section class="hero">
+
+        <!-- Drifting Snowflake Particles -->
+        <div class="snow-container" aria-hidden="true">
+            <span class="snowflake flake-1">❄</span>
+            <span class="snowflake flake-2">❅</span>
+            <span class="snowflake flake-3">❄</span>
+            <span class="snowflake flake-4">❆</span>
+            <span class="snowflake flake-5">❄</span>
+            <span class="snowflake flake-6">❅</span>
+        </div>
+
+        <!-- <div class="hero-content">
+            <div class="hero-tag">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12 2v20M2 12h20M4.93 4.93l14.14 14.14M4.93 19.07L19.07 4.93" />
+                </svg>
+                Sub-Zero Batch Inventory (-18°C)
+            </div>
+
+            -->
+            <h1 class="hero-title" id="customer-welcome-title">Fresh Cuts & Frozen Retail</h1>
+            <p class="hero-desc">Directly order fresh batches straight from our refrigerated storage. Fast guest checkout with no account required. Make an account to save order details!</p>
+            <!-- <a href="order.html" class="btn-ice">
+                <span>Proceed to Basket & Reserve</span>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <path d="M5 12h14M12 5l7 7-7 7" />
+                </svg>
+            </a> -->
+        </div>
+    </section>
+
+    <!-- Frosted Glass Catalog -->
+    <main class="container" id="catalog">
+        <div class="section-header">
+            <h2 class="section-title">Shop Our Frozen Goods</h2>
+            <p class="section-desc">Strictly managed under First-In, First-Out (FIFO) stock rules.</p>
+        </div>
+
+        <div class="product-grid" id="product-grid">
+            <p class="section-desc">Loading available products...</p>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <p>J&R Frozen Goods • Sangandaan, Caloocan City</p>
+    </footer>
+
+    
+    <dialog id="quantity-dialog" class="quantity-dialog">
+        <center><form method="dialog" id="quantity-form" class="quantity-form">
+            <button type="button" class="dialog-close" id="quantity-dialog-close" aria-label="Close">×</button>
+            <h2 class="card-heading">Add multiple</h2>
+            <p id="quantity-product-name" class="card-sub"></p>
+            <label for="quantity-input" class="form-label">Quantity</label>
+            <input type="number" id="quantity-input" class="form-input" min="1" step="1" required>
+            <p id="quantity-stock-message" class="quantity-stock-message"></p>
+            <button type="submit" class="btn-submit-order">Add to Order</button>
+        </form></center>
+    </dialog>
+    
+
+    <script src="../../js/csrf.js"></script>
+    <script src="../../js/main.js"></script>
+</body>
+</html>
+
+<!--test-->
