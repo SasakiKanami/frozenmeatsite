@@ -119,6 +119,10 @@ public class CheckoutController {
 
             OrderItem orderItem = new OrderItem();
             orderItem.setProductId(product.getId());
+            orderItem.setProductIdSnapshot(product.getId());
+            orderItem.setProductNameSnapshot(product.getName());
+            orderItem.setProductUnitSnapshot(product.getUnit());
+            orderItem.setProductSkuSnapshot(product.getSku());
             orderItem.setQuantity(quantity);
             orderItem.setUnitPrice(product.getPricePerUnit());
             orderItem.setSubtotal(subtotal);

@@ -1,6 +1,7 @@
 package com.example.demo;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -8,11 +9,14 @@ import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.times;
 
 import java.util.Optional;
+import java.util.Map;
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Set;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.springframework.data.domain.Sort;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -63,6 +67,32 @@ class OrderControllerTest {
 
         assertEquals(HttpStatus.NOT_FOUND, response.getStatusCode());
         verify(orderRepository, never()).save(any(Order.class));
+    }
+
+    @Test
+    void orderHistoryUsesProductSnapshotAfterPermanentDeletion() {
+        Order order = activeOrder();
+        when(orderRepository.findAll(any(Sort.class))).thenReturn(List.of(order));
+        OrderItem item = new OrderItem();
+        item.setId(22);
+        item.setOrderId(12);
+        item.setProductId(null);
+        item.setProductIdSnapshot(7);
+        item.setProductNameSnapshot("Chicken Nuggets");
+        item.setProductUnitSnapshot("pack");
+        item.setQuantity(new BigDecimal("1.00"));
+        when(orderItemRepository.findByOrderIdIn(Set.of(12))).thenReturn(List.of(item));
+
+        List<Map<String, Object>> response = controller.listOrders();
+
+        Object orderItems = response.get(0).get("items");
+        assertTrue(orderItems instanceof List<?>);
+        Object firstItem = ((List<?>) orderItems).get(0);
+        assertTrue(firstItem instanceof Map<?, ?>);
+        Map<?, ?> responseItem = (Map<?, ?>) firstItem;
+        assertEquals("Chicken Nuggets", responseItem.get("productName"));
+        assertEquals("pack", responseItem.get("unit"));
+        assertEquals(7, responseItem.get("productId"));
     }
 
     @Test

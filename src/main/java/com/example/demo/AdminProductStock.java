@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 
 public record AdminProductStock(
         Integer productId,
+        String sku,
         String name,
         String category,
         String temperatureTier,

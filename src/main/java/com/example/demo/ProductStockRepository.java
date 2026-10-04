@@ -9,7 +9,7 @@ import java.util.List;
 public interface ProductStockRepository extends JpaRepository<ProductStock, Integer> {
     @Query("""
             SELECT new com.example.demo.AdminProductStock(
-                p.id, p.name, p.category, p.temperatureTier, p.unit, p.pricePerUnit,
+                p.id, p.sku, p.name, p.category, p.temperatureTier, p.unit, p.pricePerUnit,
                 p.imageUrl, p.reorderLevel, COALESCE(SUM(batch.remainingQty), 0), p.visible
             )
             FROM Product p

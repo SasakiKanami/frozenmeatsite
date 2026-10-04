@@ -2,6 +2,9 @@ package com.example.demo;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -32,6 +35,12 @@ class ProductControllerTest {
     private InventoryBatchRepository inventoryBatchRepository;
     @Mock
     private ProductRepository productRepository;
+    @Mock
+    private OrderItemRepository orderItemRepository;
+    @Mock
+    private ProductAliasRepository productAliasRepository;
+    @Mock
+    private ProductSkuRegistryRepository productSkuRegistryRepository;
     @Mock
     private CloudinaryImageUploadService imageUploadService;
     @InjectMocks
@@ -64,7 +73,8 @@ class ProductControllerTest {
     @Test
     void addingProductSavesBatchExpirationDate() {
         LocalDate expirationDate = LocalDate.now().plusDays(10);
-        when(productRepository.existsByName("Test product")).thenReturn(false);
+        when(productRepository.existsByNameIgnoreCase("Test product")).thenReturn(false);
+        when(productSkuRegistryRepository.nextSkuNumber()).thenReturn(1L);
         when(productRepository.save(any(Product.class))).thenAnswer(invocation -> {
             Product product = invocation.getArgument(0);
             product.setId(7);
@@ -80,10 +90,12 @@ class ProductControllerTest {
         ResponseEntity<?> response = controller.addProduct(addProductRequest(expirationDate));
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertEquals("SKU-000001", ((java.util.Map<?, ?>) response.getBody()).get("sku"));
         ArgumentCaptor<InventoryBatch> batchCaptor = ArgumentCaptor.forClass(InventoryBatch.class);
         verify(inventoryBatchRepository).save(batchCaptor.capture());
         assertEquals(expirationDate, batchCaptor.getValue().getExpirationDate());
         assertEquals("Supplier A", batchCaptor.getValue().getSupplierName());
+        assertEquals("SKU-000001", batchCaptor.getValue().getProductSkuSnapshot());
     }
 
     @Test
@@ -147,6 +159,7 @@ class ProductControllerTest {
         product.setReorderLevel(new BigDecimal("5"));
         product.setImageUrl("https://example.test/product.png");
         when(productRepository.findById(7)).thenReturn(Optional.of(product));
+        when(productAliasRepository.findByProductId(7)).thenReturn(List.of());
 
         InventoryBatch available = new InventoryBatch();
         available.setId(1);
@@ -217,9 +230,109 @@ class ProductControllerTest {
         verify(productRepository, never()).findById(7);
     }
 
+    @Test
+    void movingProductToTrashHidesItAndRecordsDeletionTime() {
+        Product product = activeProduct(7);
+        when(productRepository.findById(7)).thenReturn(Optional.of(product));
+
+        ResponseEntity<?> response = controller.moveProductToTrash(7);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertTrue(product.getDeleted());
+        assertFalse(product.getVisible());
+        assertNotNull(product.getDeletedAt());
+        verify(productRepository).save(product);
+    }
+
+    @Test
+    void restoringProductKeepsItHiddenFromTheStorefront() {
+        Product product = activeProduct(7);
+        product.setDeleted(true);
+        product.setVisible(false);
+        product.setDeletedAt(java.time.LocalDateTime.now());
+        when(productRepository.findById(7)).thenReturn(Optional.of(product));
+
+        ResponseEntity<?> response = controller.restoreProduct(7);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertFalse(product.getDeleted());
+        assertFalse(product.getVisible());
+        assertNull(product.getDeletedAt());
+        verify(productRepository).save(product);
+    }
+
+    @Test
+    void permanentDeletionDetachesProductAndPreservesOrderAndBatchSnapshots() {
+        Product product = activeProduct(7);
+        product.setDeleted(true);
+        product.setName("Chicken Nuggets");
+        product.setSku("SKU-000007");
+        product.setUnit("pack");
+        when(productRepository.findById(7)).thenReturn(Optional.of(product));
+
+        OrderItem orderItem = new OrderItem();
+        orderItem.setProductId(7);
+        when(orderItemRepository.findByProductId(7)).thenReturn(List.of(orderItem));
+
+        InventoryBatch batch = new InventoryBatch();
+        batch.setId(91);
+        batch.setProductId(7);
+        when(inventoryBatchRepository.findByProductIdOrderByArrivalDateAscIdAsc(7)).thenReturn(List.of(batch));
+
+        ResponseEntity<?> response = controller.permanentlyDeleteProduct(7);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertNull(orderItem.getProductId());
+        assertEquals(7, orderItem.getProductIdSnapshot());
+        assertEquals("Chicken Nuggets", orderItem.getProductNameSnapshot());
+        assertEquals("pack", orderItem.getProductUnitSnapshot());
+        assertEquals("SKU-000007", orderItem.getProductSkuSnapshot());
+        assertNull(batch.getProductId());
+        assertEquals(7, batch.getProductIdSnapshot());
+        assertEquals("Chicken Nuggets", batch.getProductNameSnapshot());
+        assertEquals("SKU-000007", batch.getProductSkuSnapshot());
+        verify(orderItemRepository).saveAllAndFlush(List.of(orderItem));
+        verify(inventoryBatchRepository).saveAllAndFlush(List.of(batch));
+        verify(productRepository).delete(product);
+    }
+
+    @Test
+    void changingSkuRetiresPreviousSkuAndRegistersNewValue() {
+        Product product = activeProduct(7);
+        product.setSku("SKU-000007");
+        when(productRepository.findById(7)).thenReturn(Optional.of(product));
+        ProductSkuRegistry oldEntry = new ProductSkuRegistry();
+        oldEntry.setSku("SKU-000007");
+        oldEntry.setProductId(7);
+        when(productSkuRegistryRepository.findById("SKU-000007")).thenReturn(Optional.of(oldEntry));
+
+        UpdateProductSkuRequest request = new UpdateProductSkuRequest();
+        request.setSku("meat-007");
+        ResponseEntity<?> response = controller.updateProductSku(7, request);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertEquals("MEAT-007", product.getSku());
+        assertNull(oldEntry.getProductId());
+        verify(productSkuRegistryRepository).saveAndFlush(any(ProductSkuRegistry.class));
+        verify(productRepository).save(product);
+    }
+
+    @Test
+    void productNamesCannotDuplicateAnExistingAlias() {
+        AddProductRequest request = addProductRequest(LocalDate.now().plusDays(10));
+        request.setName("TJ Hotdog");
+        when(productAliasRepository.existsByAliasIgnoreCase("TJ Hotdog")).thenReturn(true);
+
+        ResponseEntity<?> response = controller.addProduct(request);
+
+        assertEquals(HttpStatus.CONFLICT, response.getStatusCode());
+        verify(productRepository, never()).save(any(Product.class));
+    }
+
     private Product activeProduct(Integer id) {
         Product product = new Product();
         product.setId(id);
+        product.setSku("SKU-000007");
         product.setDeleted(false);
         product.setVisible(true);
         return product;

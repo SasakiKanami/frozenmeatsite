@@ -19,7 +19,10 @@
             </div>
             <nav class="nav-links">
                 <a href="../customer_side/index.html" class="nav-link">View Storefront</a>
+                <span class="divider">|</span> 
                 <a href="admin_add_items.html" class="nav-link">Add Items</a>
+                <span class="divider">|</span> 
+                <a href="deleted_items.html" class="nav-link">View Deleted Items</a>
             </nav>
         </div>
     </nav>
@@ -44,6 +47,27 @@
     <!-- Main Content Area -->
     <main class="container">
 
+        <section class="admin-panel">
+            <div class="admin-panel-header">
+                <div>
+                    <h2 class="admin-panel-title">Find an Existing Product</h2>
+                    <p class="admin-panel-sub">Search product names and alternate names first. Select the existing product to receive another batch instead of creating a duplicate.</p>
+                </div>
+            </div>
+            <div class="inventory-search-wrap">
+                <label class="form-label" for="existing-product-search">Search products</label>
+                <input class="inventory-search" id="existing-product-search" type="search" placeholder="Search name, alias, or SKU" autocomplete="off">
+            </div>
+            <div class="table-scroll">
+                <table class="admin-table">
+                    <thead><tr><th>SKU</th><th>Product</th><th>Category</th><th>Aliases</th><th>Action</th></tr></thead>
+                    <tbody id="existing-product-results">
+                        <tr><td colspan="5">Enter at least two characters to search active products.</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
         <!-- Add Items Admin Panel Card -->
         <section class="admin-panel">
             <div class="admin-panel-header">
@@ -57,8 +81,12 @@
             <form id="add-item-form">
                 <div class="form-grid">
                     <div class="form-group">
-                        <label class="form-label" for="sku-code">Batch Number</label>
-                        <input type="text" id="sku-code" class="form-input" placeholder="e.g. BATCH-BT-001" required>
+                        <label class="form-label" for="product-sku">Product SKU (optional)</label>
+                        <input type="text" id="product-sku" class="form-input" maxlength="40" placeholder="Generated automatically if blank">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="batch-number">Batch / Lot Number</label>
+                        <input type="text" id="batch-number" class="form-input" maxlength="50" placeholder="e.g. BATCH-BT-001" required>
                     </div>
                     <div class="form-group">
                         <label class="form-label" for="product-name">Product Name</label>
@@ -73,6 +101,13 @@
                             <option value="Poultry">Poultry</option>
                             <option value="Processed">Processed</option>
                         </select>
+                    </div>
+                </div>
+
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label class="form-label" for="product-aliases">Alternate Names (optional)</label>
+                        <input type="text" id="product-aliases" class="form-input" maxlength="500" placeholder="Comma-separated, e.g. TJ Hotdog, Tender Juicy">
                     </div>
                 </div>
 
@@ -153,7 +188,8 @@
                 <table class="admin-table">
                     <thead>
                         <tr>
-                            <th>Batch Ref</th>
+                            <th>Batch / Lot</th>
+                            <th>Product SKU</th>
                             <th>Supplier</th>
                             <th>Item Name</th>
                             <th>Category</th>
@@ -204,12 +240,51 @@
         const imageUploadStatus = document.getElementById('image-upload-status');
         const addItemForm = document.getElementById('add-item-form');
         const expirationDateInput = document.getElementById('expiration-date');
+        const productSearchInput = document.getElementById('existing-product-search');
+        const productSearchResults = document.getElementById('existing-product-results');
         const currentDate = new Date();
         expirationDateInput.min = [
             currentDate.getFullYear(),
             String(currentDate.getMonth() + 1).padStart(2, '0'),
             String(currentDate.getDate()).padStart(2, '0')
         ].join('-');
+
+        let productSearchTimer;
+        let productSearchRequest = 0;
+        productSearchInput.addEventListener('input', function() {
+            clearTimeout(productSearchTimer);
+            const query = productSearchInput.value.trim();
+            if (query.length < 2) {
+                productSearchResults.innerHTML = '<tr><td colspan="5">Enter at least two characters to search active products.</td></tr>';
+                return;
+            }
+            productSearchResults.innerHTML = '<tr><td colspan="5">Searching...</td></tr>';
+            productSearchTimer = setTimeout(async function() {
+                const requestId = ++productSearchRequest;
+                try {
+                    const response = await fetch(`/api/admin/products/search?query=${encodeURIComponent(query)}`);
+                    const products = await response.json();
+                    if (!response.ok) throw new Error(products.error || `Product search failed: ${response.status}`);
+                    if (requestId !== productSearchRequest) return;
+                    if (!products.length) {
+                        productSearchResults.innerHTML = '<tr><td colspan="5">No active products matched. You can register this as a new product.</td></tr>';
+                        return;
+                    }
+                    productSearchResults.innerHTML = products.map(product => `
+                        <tr>
+                            <td>${escapeHtml(product.sku)}</td>
+                            <td class="cell-product-name">${escapeHtml(product.name)}</td>
+                            <td>${escapeHtml(product.category)}</td>
+                            <td>${product.aliases.map(escapeHtml).join(', ') || '—'}</td>
+                            <td><a class="btn-restock" href="product_batches.html?id=${encodeURIComponent(product.productId)}">Select / Receive Batch</a></td>
+                        </tr>
+                    `).join('');
+                } catch (error) {
+                    if (requestId !== productSearchRequest) return;
+                    productSearchResults.innerHTML = `<tr><td colspan="5">${escapeHtml(error.message || 'Product search failed.')}</td></tr>`;
+                }
+            }, 250);
+        });
 
         imageInput.addEventListener('change', function() {
             if (imagePreviewUrl) URL.revokeObjectURL(imagePreviewUrl);
@@ -244,8 +319,13 @@
         addItemForm.addEventListener('submit', async function(e) {
             e.preventDefault();
 
-            const sku = document.getElementById('sku-code').value.trim();
+            const batchNumber = document.getElementById('batch-number').value.trim();
+            const productSku = document.getElementById('product-sku').value.trim();
             const name = document.getElementById('product-name').value.trim();
+            const aliases = document.getElementById('product-aliases').value
+                .split(',')
+                .map(alias => alias.trim())
+                .filter(Boolean);
             const category = document.getElementById('category').value;
             const price = parseFloat(document.getElementById('unit-price').value).toFixed(2);
             const qty = parseFloat(document.getElementById('initial-qty').value);
@@ -284,7 +364,9 @@
                     method: 'POST',
                     headers: csrfHeaders({ 'Content-Type': 'application/json' }),
                     body: JSON.stringify({
+                        sku: productSku || null,
                         name: name,
+                        aliases: aliases,
                         category: category,
                         temperatureTier: zone,
                         unit: unit,
@@ -292,7 +374,7 @@
                         imageUrl: imageUrl,
                         reorderLevel: lowLimit,
                         expirationDate: expirationDate,
-                        batchNumber: sku,
+                        batchNumber: batchNumber,
                         supplierName: supplierName || null,
                         initialQty: qty
                     })
@@ -316,7 +398,8 @@
                 const tbody = document.getElementById('recent-items-body');
                 const newRow = document.createElement('tr');
                 newRow.innerHTML = `
-                <td class="ref-pill">${escapeHtml(sku)}</td>
+                <td class="ref-pill">${escapeHtml(batchNumber)}</td>
+                <td>${escapeHtml(result.sku)}</td>
                 <td class="cell-product-cat">${escapeHtml(supplierName || 'Direct Meat Supplier')}</td>
                 <td class="cell-product-name">${escapeHtml(name)}</td>
                 <td class="cell-product-cat">${escapeHtml(category)}</td>
@@ -328,7 +411,7 @@
             `;
 
                 tbody.insertBefore(newRow, tbody.firstChild);
-                alert('Product and inventory batch added successfully.');
+                alert(`Product ${result.sku} and its first inventory batch were added successfully.`);
 
                 // Reset form upon successful submission
                 document.getElementById('add-item-form').reset();

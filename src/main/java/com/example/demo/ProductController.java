@@ -10,8 +10,13 @@ import org.springframework.web.multipart.MultipartFile;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
+import java.util.HashSet;
 
 @RestController
 @RequestMapping("/api")
@@ -25,6 +30,15 @@ public class ProductController {
 
     @Autowired
     private ProductRepository productRepository;
+
+    @Autowired
+    private OrderItemRepository orderItemRepository;
+
+    @Autowired
+    private ProductAliasRepository productAliasRepository;
+
+    @Autowired
+    private ProductSkuRegistryRepository productSkuRegistryRepository;
 
     @Autowired
     private CloudinaryImageUploadService imageUploadService;
@@ -60,6 +74,142 @@ public class ProductController {
         return productStockRepository.findAllForAdmin();
     }
 
+    @GetMapping("/admin/products/search")
+    public ResponseEntity<?> searchProducts(@RequestParam String query) {
+        String term = query == null ? "" : query.trim();
+        if (term.length() < 2) {
+            return ResponseEntity.ok(List.of());
+        }
+        Map<Integer, Product> productsById = new LinkedHashMap<>();
+        for (Product product : productRepository.searchActiveByName(term)) {
+            productsById.put(product.getId(), product);
+        }
+        for (Product product : productRepository.findBySkuContainingIgnoreCaseAndIsDeletedFalse(term)) {
+            productsById.put(product.getId(), product);
+        }
+        for (ProductAlias alias : productAliasRepository.searchActiveAliases(term)) {
+            if (alias.getProductId() == null || productsById.containsKey(alias.getProductId())) continue;
+            productRepository.findById(alias.getProductId())
+                    .filter(product -> !Boolean.TRUE.equals(product.getDeleted()))
+                    .ifPresent(product -> productsById.put(product.getId(), product));
+        }
+        List<Integer> productIds = new ArrayList<>(productsById.keySet());
+        Map<Integer, List<String>> aliasesByProduct = new LinkedHashMap<>();
+        if (!productIds.isEmpty()) {
+            for (ProductAlias alias : productAliasRepository.findByProductIdIn(productIds)) {
+                aliasesByProduct.computeIfAbsent(alias.getProductId(), ignored -> new ArrayList<>()).add(alias.getAlias());
+            }
+        }
+        List<ProductLookupResult> results = productsById.values().stream()
+                .sorted(java.util.Comparator.comparing(Product::getName, String.CASE_INSENSITIVE_ORDER))
+                .map(product -> new ProductLookupResult(
+                        product.getId(),
+                        product.getSku(),
+                        product.getName(),
+                        product.getCategory(),
+                        product.getUnit(),
+                        aliasesByProduct.getOrDefault(product.getId(), List.of())))
+                .toList();
+        return ResponseEntity.ok(results);
+    }
+
+    @GetMapping("/admin/deleted-products")
+    public List<AdminDeletedProduct> getDeletedProducts() {
+        return productRepository.findByIsDeletedTrueOrderByDeletedAtDesc().stream()
+                .map(product -> new AdminDeletedProduct(
+                        product.getId(),
+                        product.getSku(),
+                        product.getName(),
+                        product.getCategory(),
+                        product.getUnit(),
+                        product.getPricePerUnit(),
+                        product.getDeletedAt()))
+                .toList();
+    }
+
+    @DeleteMapping("/admin/products/{productId}")
+    @Transactional
+    public ResponseEntity<?> moveProductToTrash(@PathVariable Integer productId) {
+        Product product = productRepository.findById(productId).orElse(null);
+        if (product == null) {
+            return ResponseEntity.status(404).body(Map.of("error", "Product not found"));
+        }
+        if (Boolean.TRUE.equals(product.getDeleted())) {
+            return ResponseEntity.status(409).body(Map.of("error", "Product is already in the trash"));
+        }
+
+        product.setVisible(false);
+        product.setDeleted(true);
+        product.setDeletedAt(LocalDateTime.now());
+        productRepository.save(product);
+        return ResponseEntity.ok(Map.of("message", "Product moved to trash"));
+    }
+
+    @PostMapping("/admin/products/{productId}/restore")
+    @Transactional
+    public ResponseEntity<?> restoreProduct(@PathVariable Integer productId) {
+        Product product = productRepository.findById(productId).orElse(null);
+        if (product == null || !Boolean.TRUE.equals(product.getDeleted())) {
+            return ResponseEntity.status(404).body(Map.of("error", "Deleted product not found"));
+        }
+
+        product.setDeleted(false);
+        product.setDeletedAt(null);
+        product.setVisible(false);
+        productRepository.save(product);
+        return ResponseEntity.ok(Map.of("message", "Product restored and remains hidden from the storefront"));
+    }
+
+    @DeleteMapping("/admin/products/{productId}/permanent")
+    @Transactional
+    public ResponseEntity<?> permanentlyDeleteProduct(@PathVariable Integer productId) {
+        Product product = productRepository.findById(productId).orElse(null);
+        if (product == null) {
+            return ResponseEntity.status(404).body(Map.of("error", "Product not found"));
+        }
+        if (!Boolean.TRUE.equals(product.getDeleted())) {
+            return ResponseEntity.status(409).body(Map.of("error", "Move the product to trash before permanently deleting it"));
+        }
+
+        List<OrderItem> orderItems = orderItemRepository.findByProductId(productId);
+        for (OrderItem item : orderItems) {
+            item.setProductIdSnapshot(productId);
+            item.setProductNameSnapshot(product.getName());
+            item.setProductUnitSnapshot(product.getUnit());
+            item.setProductSkuSnapshot(product.getSku());
+            item.setProductId(null);
+        }
+        if (!orderItems.isEmpty()) {
+            orderItemRepository.saveAllAndFlush(orderItems);
+        }
+
+        List<InventoryBatch> batches = inventoryBatchRepository
+                .findByProductIdOrderByArrivalDateAscIdAsc(productId);
+        for (InventoryBatch batch : batches) {
+            batch.setProductIdSnapshot(productId);
+            batch.setProductNameSnapshot(product.getName());
+            batch.setProductSkuSnapshot(product.getSku());
+            batch.setProductId(null);
+        }
+        if (!batches.isEmpty()) {
+            inventoryBatchRepository.saveAllAndFlush(batches);
+        }
+
+        List<ProductAlias> aliases = productAliasRepository.findByProductId(productId);
+        for (ProductAlias alias : aliases) {
+            alias.setRetiredProductId(productId);
+            alias.setRetiredProductSku(product.getSku());
+            alias.setProductId(null);
+        }
+        if (!aliases.isEmpty()) {
+            productAliasRepository.saveAllAndFlush(aliases);
+        }
+
+        productRepository.delete(product);
+        return ResponseEntity.ok(Map.of(
+                "message", "Product permanently deleted; order and batch history was retained"));
+    }
+
     @GetMapping("/admin/products/{productId}")
     @Transactional(readOnly = true)
     public ResponseEntity<?> getAdminProductDetails(@PathVariable Integer productId) {
@@ -90,6 +240,7 @@ public class ProductController {
 
         return ResponseEntity.ok(new AdminProductDetails(
                 product.getId(),
+                product.getSku(),
                 product.getName(),
                 product.getCategory(),
                 product.getTemperatureTier(),
@@ -99,6 +250,10 @@ public class ProductController {
                 product.getReorderLevel(),
                 product.getVisible(),
                 availableStock,
+                productAliasRepository.findByProductId(productId).stream()
+                        .map(ProductAlias::getAlias)
+                        .sorted(String.CASE_INSENSITIVE_ORDER)
+                        .toList(),
                 batchDetails));
     }
 
@@ -120,6 +275,9 @@ public class ProductController {
         LocalDateTime now = LocalDateTime.now();
         InventoryBatch batch = new InventoryBatch();
         batch.setProductId(productId);
+        batch.setProductIdSnapshot(productId);
+        batch.setProductNameSnapshot(product.getName());
+        batch.setProductSkuSnapshot(product.getSku());
         batch.setBatchNumber(request.getBatchNumber().trim());
         batch.setSupplierName(request.getSupplierNameOrDefault());
         batch.setInitialQty(request.getQuantity());
@@ -178,6 +336,75 @@ public class ProductController {
         ));
     }
 
+    @PutMapping("/admin/products/{productId}/sku")
+    @Transactional
+    public ResponseEntity<?> updateProductSku(
+            @PathVariable Integer productId,
+            @RequestBody UpdateProductSkuRequest request) {
+        if (request == null || request.getSku() == null) {
+            return ResponseEntity.badRequest().body(Map.of("error", "A product SKU is required"));
+        }
+        String validationError = validateSku(request.getSku());
+        if (validationError != null) {
+            return ResponseEntity.badRequest().body(Map.of("error", validationError));
+        }
+
+        Product product = productRepository.findById(productId).orElse(null);
+        if (product == null || Boolean.TRUE.equals(product.getDeleted())) {
+            return ResponseEntity.status(404).body(Map.of("error", "Product not found"));
+        }
+        String sku = normalizeSku(request.getSku());
+        if (sku.equals(product.getSku())) {
+            return ResponseEntity.ok(Map.of("message", "SKU unchanged", "sku", sku));
+        }
+        if (productSkuRegistryRepository.existsById(sku)) {
+            return ResponseEntity.status(409).body(Map.of("error", "That SKU has already been used and cannot be reused"));
+        }
+
+        ProductSkuRegistry previousSku = productSkuRegistryRepository.findById(product.getSku())
+                .orElseThrow(() -> new IllegalStateException("Current product SKU is missing from the registry"));
+        previousSku.setProductId(null);
+        productSkuRegistryRepository.save(previousSku);
+
+        ProductSkuRegistry registryEntry = new ProductSkuRegistry();
+        registryEntry.setSku(sku);
+        registryEntry.setProductId(productId);
+        registryEntry.setAllocatedAt(LocalDateTime.now());
+        productSkuRegistryRepository.saveAndFlush(registryEntry);
+        product.setSku(sku);
+        productRepository.save(product);
+
+        return ResponseEntity.ok(Map.of("message", "Product SKU updated", "sku", sku));
+    }
+
+    @PostMapping("/admin/products/{productId}/aliases")
+    @Transactional
+    public ResponseEntity<?> addProductAlias(
+            @PathVariable Integer productId,
+            @RequestBody ProductAliasRequest request) {
+        String validationError = request == null ? "An alternate name is required" : request.validate();
+        if (validationError != null) {
+            return ResponseEntity.badRequest().body(Map.of("error", validationError));
+        }
+        Product product = productRepository.findById(productId).orElse(null);
+        if (product == null || Boolean.TRUE.equals(product.getDeleted())) {
+            return ResponseEntity.status(404).body(Map.of("error", "Product not found"));
+        }
+
+        String aliasName = request.getAlias().trim();
+        if (product.getName().equalsIgnoreCase(aliasName)
+                || productRepository.existsByNameIgnoreCase(aliasName)
+                || productAliasRepository.existsByAliasIgnoreCase(aliasName)) {
+            return ResponseEntity.status(409).body(Map.of("error", "That name is already assigned to a product or alias"));
+        }
+        ProductAlias alias = new ProductAlias();
+        alias.setProductId(productId);
+        alias.setAlias(aliasName);
+        alias.setCreatedAt(LocalDateTime.now());
+        productAliasRepository.save(alias);
+        return ResponseEntity.ok(Map.of("message", "Alternate product name added", "alias", aliasName));
+    }
+
     @PostMapping("/products")
     @Transactional
     public ResponseEntity<?> addProduct(@RequestBody AddProductRequest request) {
@@ -186,15 +413,40 @@ public class ProductController {
             return ResponseEntity.badRequest().body(Map.of("error", validationError));
         }
 
-        if (productRepository.existsByName(request.getName())) {
-            return ResponseEntity.badRequest().body(Map.of("error", "A product with that name already exists"));
+        String productName = request.getName().trim();
+        if (request.getSku() != null && !request.getSku().isBlank()) {
+            String skuError = validateSku(request.getSku());
+            if (skuError != null) {
+                return ResponseEntity.badRequest().body(Map.of("error", skuError));
+            }
+        }
+        if (productRepository.existsByNameIgnoreCase(productName)
+                || productAliasRepository.existsByAliasIgnoreCase(productName)) {
+            return ResponseEntity.status(409).body(Map.of("error", "That product name already belongs to a product or its alternate name. Search and select the existing item to receive stock."));
+        }
+        Set<String> normalizedAliases = new HashSet<>();
+        for (String alias : request.getAliases()) {
+            String normalizedAlias = alias.trim().toLowerCase(Locale.ROOT);
+            if (normalizedAlias.equals(productName.toLowerCase(Locale.ROOT))
+                    || !normalizedAliases.add(normalizedAlias)
+                    || productRepository.existsByNameIgnoreCase(alias.trim())
+                    || productAliasRepository.existsByAliasIgnoreCase(alias.trim())) {
+                return ResponseEntity.status(409).body(Map.of("error", "An alternate name is duplicated or already belongs to another product"));
+            }
         }
 
         try {
             LocalDateTime now = LocalDateTime.now();
 
             Product product = new Product();
-            product.setName(request.getName().trim());
+            product.setName(productName);
+            String sku = request.getSku() == null || request.getSku().isBlank()
+                    ? nextAvailableSku()
+                    : normalizeSku(request.getSku());
+            if (productSkuRegistryRepository.existsById(sku)) {
+                return ResponseEntity.status(409).body(Map.of("error", "That SKU has already been used and cannot be reused"));
+            }
+            product.setSku(sku);
             product.setCategory(request.getCategory());
             product.setTemperatureTier(request.getTemperatureTier());
             product.setUnit(request.getUnit());
@@ -205,8 +457,17 @@ public class ProductController {
             product.setCreatedAt(now);
             Product savedProduct = productRepository.save(product);
 
+            ProductSkuRegistry skuRegistryEntry = new ProductSkuRegistry();
+            skuRegistryEntry.setSku(sku);
+            skuRegistryEntry.setProductId(savedProduct.getId());
+            skuRegistryEntry.setAllocatedAt(now);
+            productSkuRegistryRepository.saveAndFlush(skuRegistryEntry);
+
             InventoryBatch batch = new InventoryBatch();
             batch.setProductId(savedProduct.getId());
+            batch.setProductIdSnapshot(savedProduct.getId());
+            batch.setProductNameSnapshot(savedProduct.getName());
+            batch.setProductSkuSnapshot(savedProduct.getSku());
             batch.setBatchNumber(request.getBatchNumber().trim());
             batch.setSupplierName(request.getSupplierNameOrDefault());
             batch.setInitialQty(request.getInitialQty());
@@ -216,15 +477,42 @@ public class ProductController {
             batch.setDeleted(false);
             batch.setCreatedAt(now);
             InventoryBatch savedBatch = inventoryBatchRepository.save(batch);
+            for (String aliasName : request.getAliases()) {
+                ProductAlias alias = new ProductAlias();
+                alias.setProductId(savedProduct.getId());
+                alias.setAlias(aliasName.trim());
+                alias.setCreatedAt(now);
+                productAliasRepository.save(alias);
+            }
 
             return ResponseEntity.ok(Map.of(
                     "message", "Product and inventory batch added successfully",
                     "productId", savedProduct.getId(),
+                    "sku", savedProduct.getSku(),
                     "batchId", savedBatch.getId()
             ));
         } catch (DataIntegrityViolationException exception) {
             return ResponseEntity.badRequest().body(Map.of("error", "The product or batch data conflicts with the database rules"));
         }
+    }
+
+    private String nextAvailableSku() {
+        String sku;
+        do {
+            sku = String.format(Locale.ROOT, "SKU-%06d", productSkuRegistryRepository.nextSkuNumber());
+        } while (productSkuRegistryRepository.existsById(sku));
+        return sku;
+    }
+
+    private String normalizeSku(String sku) {
+        return sku.trim().toUpperCase(Locale.ROOT);
+    }
+
+    private String validateSku(String sku) {
+        String normalized = normalizeSku(sku);
+        return normalized.matches("[A-Z0-9][A-Z0-9._-]{0,39}")
+                ? null
+                : "SKU must contain 1 to 40 letters, numbers, periods, underscores, or hyphens";
     }
 
     @DeleteMapping("/inventory/{id}")
@@ -300,6 +588,7 @@ class UpdateBatchExpirationRequest {
 }
 
 class AddProductRequest {
+    private String sku;
     private String name;
     private String category;
     private String temperatureTier;
@@ -311,6 +600,7 @@ class AddProductRequest {
     private String batchNumber;
     private String supplierName;
     private BigDecimal initialQty;
+    private List<String> aliases = List.of();
 
     public String validate() {
         if (isBlank(name) || isBlank(category) || isBlank(temperatureTier) || isBlank(unit) || isBlank(batchNumber)) {
@@ -318,6 +608,13 @@ class AddProductRequest {
         }
         if (supplierName != null && supplierName.trim().length() > 100) {
             return "Supplier name must be 100 characters or fewer";
+        }
+        if (sku != null && sku.trim().length() > 40) {
+            return "SKU must be 40 characters or fewer";
+        }
+        if (aliases == null || aliases.stream().anyMatch(alias ->
+                alias == null || alias.isBlank() || alias.trim().length() > 120)) {
+            return "Alternate names must be non-empty and 120 characters or fewer";
         }
         if (pricePerUnit == null || pricePerUnit.compareTo(BigDecimal.ZERO) < 0) {
             return "Price must be zero or greater";
@@ -349,6 +646,10 @@ class AddProductRequest {
 
     public String getName() { return name; }
     public void setName(String name) { this.name = name; }
+    public String getSku() { return sku; }
+    public void setSku(String sku) { this.sku = sku; }
+    public List<String> getAliases() { return aliases == null ? List.of() : aliases; }
+    public void setAliases(List<String> aliases) { this.aliases = aliases; }
     public String getCategory() { return category; }
     public void setCategory(String category) { this.category = category; }
     public String getTemperatureTier() { return temperatureTier; }
@@ -373,4 +674,26 @@ class AddProductRequest {
     public String getSupplierNameOrDefault() {
         return isBlank(supplierName) ? "Direct Meat Supplier" : supplierName.trim();
     }
+
+}
+
+class UpdateProductSkuRequest {
+    private String sku;
+
+    public String getSku() { return sku; }
+    public void setSku(String sku) { this.sku = sku; }
+}
+
+class ProductAliasRequest {
+    private String alias;
+
+    public String validate() {
+        if (alias == null || alias.isBlank() || alias.trim().length() > 120) {
+            return "Alternate name is required and must be 120 characters or fewer";
+        }
+        return null;
+    }
+
+    public String getAlias() { return alias; }
+    public void setAlias(String alias) { this.alias = alias; }
 }

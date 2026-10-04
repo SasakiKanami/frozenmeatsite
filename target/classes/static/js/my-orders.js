@@ -19,11 +19,11 @@ function renderCustomerOrders(orders) {
     tableBody.replaceChildren();
 
     if (!orders.length) {
-        message.textContent = 'You have no pending orders.';
+        message.textContent = 'You have no orders yet.';
         return;
     }
 
-    message.textContent = `${orders.length} pending ${orders.length === 1 ? 'order' : 'orders'}.`;
+    message.textContent = `${orders.length} ${orders.length === 1 ? 'order' : 'orders'} in your history.`;
     orders.forEach(order => {
         const row = document.createElement('tr');
         const items = (order.items || []).map(item =>

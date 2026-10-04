@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deleted Items | J&amp;R Frozen Goods Admin Panel</title>
+    <link rel="stylesheet" href="../../css/styles.css">
+    <link rel="stylesheet" href="../../css/admin.css">
+</head>
+<body>
+    <header class="navbar">
+        <div class="nav-container">
+            <div class="brand">
+                <span class="brand-title">J&amp;R Frozen Goods</span>
+                <span class="brand-sub">Carni-Flow Admin Panel</span>
+            </div>
+            <nav class="nav-links">
+                <a href="admin.html" class="nav-link">Back to Inventory</a>
+                <span class="divider">|</span> 
+                <a href="../customer_side/index.html" target="_blank" class="nav-link">View Storefront</a>
+                <span class="divider">|</span> 
+                <a href="deleted_items.html" class="nav-link" aria-current="page">View Deleted Items</a>
+            </nav>
+        </div>
+    </header>
+
+    <header class="admin-header">
+        <div class="admin-header-inner">
+            <div>
+                <div class="admin-eyebrow">Operations Control Center</div>
+                <h1 class="admin-title">Deleted Items</h1>
+                <p class="admin-desc">Products moved out of active inventory will be listed here.</p>
+            </div>
+        </div>
+    </header>
+
+    <main class="container">
+        <section class="admin-panel">
+            <div class="admin-panel-header">
+                <div>
+                    <h2 class="admin-panel-title">Trash Bin</h2>
+                    <p class="admin-panel-sub">Restore a product to return it to inventory, or permanently delete it from the catalog while keeping order and batch history.</p>
+                </div>
+            </div>
+            <p class="stock-adjustment-message" id="deleted-items-message" role="status" aria-live="polite"></p>
+            <p class="empty-orders-msg hidden" id="deleted-items-empty">There are no deleted items.</p>
+            <div class="table-scroll">
+                <table class="admin-table">
+                    <thead>
+                        <tr>
+                            <th>SKU</th>
+                            <th>Product</th>
+                            <th>Category</th>
+                            <th>Unit Price</th>
+                            <th>Deleted</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="deleted-items-table-body"></tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+    <script src="../../js/csrf.js"></script>
+    <script src="../../js/deleted-items.js"></script>
+</body>
+</html>

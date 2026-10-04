@@ -3,6 +3,8 @@
 // 1. Load cart from browser storage (no account needed)
 let cart = JSON.parse(localStorage.getItem('carni_guest_cart')) || [];
 let quantityProduct = null;
+let savedDeliveryFee = 0;
+let savedCustomerProfile = null;
 
 function escapeHtml(value) {
     return String(value ?? '').replace(/[&<>"']/g, character => ({
@@ -14,6 +16,7 @@ function escapeHtml(value) {
 async function updateAuthLink() {
     const link = document.getElementById('auth-link');
     const ordersLink = document.getElementById('my-orders-link');
+    const profileLink = document.getElementById('profile-link');
     if (!link) return;
 
     try {
@@ -22,7 +25,10 @@ async function updateAuthLink() {
         const session = await response.json();
         if (!session.authenticated) return;
 
-        if (session.role === 'customer' && ordersLink) ordersLink.classList.remove('hidden');
+        if (session.role === 'customer') {
+            if (ordersLink) ordersLink.classList.remove('hidden');
+            if (profileLink) profileLink.classList.remove('hidden');
+        }
     } catch (error) {
         console.error('Unable to check signed-in customer session:', error);
         return;
@@ -207,6 +213,14 @@ function renderOrderSummary() {
     if (!summaryContainer || !totalPriceElem) return;
 
     summaryContainer.innerHTML = '';
+    const deliverySelected = document.getElementById('fulfillmentType')?.value === 'Same-Day Delivery';
+    const fee = deliverySelected ? savedDeliveryFee : 0;
+    const feePreview = document.getElementById('delivery-fee-preview');
+    if (feePreview) {
+        feePreview.textContent = deliverySelected
+            ? `Delivery fee: ₱${fee.toFixed(2)}`
+            : `Local delivery fee: ₱${savedDeliveryFee.toFixed(2)} (charged only for delivery)`;
+    }
 
     if (cart.length === 0) {
         summaryContainer.innerHTML = '<p class="empty-cart-msg">Your basket is empty. Browse the catalog to add stuff to your basket!</p>';
@@ -237,7 +251,7 @@ function renderOrderSummary() {
         summaryContainer.appendChild(row);
     });
 
-    totalPriceElem.textContent = `₱${total.toFixed(2)}`;
+    totalPriceElem.textContent = `₱${(total + fee).toFixed(2)}`;
 }
 
 // 6. Change quantity (+ / -) in order.html
@@ -312,6 +326,7 @@ async function handleGuestCheckout(event) {
         document.getElementById('conf-phone').textContent = guestPhone;
         document.getElementById('conf-fulfillment').textContent = fulfillmentType.toUpperCase();
         document.getElementById('conf-payment').textContent = paymentMethod.toUpperCase();
+        document.getElementById('conf-delivery-fee').textContent = `₱${Number(result.deliveryFee || 0).toFixed(2)}`;
         document.getElementById('conf-total').textContent = `₱${Number(result.totalAmount).toFixed(2)}`;
 
         checkoutCard.classList.add('hidden');
@@ -337,9 +352,42 @@ function updateDeliveryFields() {
     addressGroup.hidden = !deliverySelected;
     notesGroup.hidden = !deliverySelected;
     addressInput.required = deliverySelected;
-    if (!deliverySelected) {
-        addressInput.value = '';
-        document.getElementById('deliveryNotes').value = '';
+    if (deliverySelected && savedCustomerProfile) {
+        if (!addressInput.value) {
+            addressInput.value = [savedCustomerProfile.addressLine, savedCustomerProfile.city]
+                .filter(Boolean).join(', ');
+        }
+        const notesInput = document.getElementById('deliveryNotes');
+        if (!notesInput.value) notesInput.value = savedCustomerProfile.landmark || '';
+    }
+    renderOrderSummary();
+}
+
+async function loadCheckoutSettings() {
+    try {
+        const response = await fetch('/api/checkout-settings');
+        if (!response.ok) throw new Error(`Checkout settings request failed: ${response.status}`);
+        const settings = await response.json();
+        savedDeliveryFee = Number(settings.deliveryFee || 0);
+        renderOrderSummary();
+    } catch (error) {
+        console.error('Unable to load checkout settings:', error);
+    }
+}
+
+async function loadSavedCustomerProfile() {
+    if (!document.getElementById('guestName')) return;
+    try {
+        const response = await fetch('/api/account/profile');
+        if (response.status === 401 || response.status === 403) return;
+        if (!response.ok) throw new Error(`Profile request failed: ${response.status}`);
+        savedCustomerProfile = await response.json();
+        document.getElementById('guestName').value = savedCustomerProfile.fullName || '';
+        document.getElementById('guestPhone').value = savedCustomerProfile.phone || '';
+        document.getElementById('guestEmail').value = savedCustomerProfile.email || '';
+        updateDeliveryFields();
+    } catch (error) {
+        console.error('Unable to prefill saved checkout details:', error);
     }
 }
 
@@ -349,6 +397,8 @@ document.addEventListener('DOMContentLoaded', () => {
     updateAuthLink();
     renderOrderSummary();
     loadCatalog();
+    loadCheckoutSettings();
+    loadSavedCustomerProfile();
     document.getElementById('fulfillmentType')?.addEventListener('change', updateDeliveryFields);
     updateDeliveryFields();
     document.getElementById('quantity-dialog-close')?.addEventListener('click', closeQuantityDialog);

@@ -126,6 +126,30 @@
                     <button type="submit" class="btn-submit-order">Create Account</button>
                 </form>
 
+                <section id="password-reset-panel" class="auth-form hidden">
+                    <form id="password-reset-request-form">
+                        <p class="card-sub">Enter your account email and we will send a one-time reset link if it matches an account.</p>
+                        <div class="form-group">
+                            <label class="form-label" for="reset-email">Email Address</label>
+                            <input class="form-input" type="email" id="reset-email" autocomplete="email" required>
+                        </div>
+                        <button type="submit" class="btn-submit-order">Send Reset Link</button>
+                    </form>
+                    <form id="password-reset-complete-form" class="hidden">
+                        <p class="card-sub">Choose a new password. Reset links expire after 30 minutes.</p>
+                        <div class="form-group">
+                            <label class="form-label" for="reset-password">New Password</label>
+                            <input class="form-input" type="password" id="reset-password" minlength="8" maxlength="72" autocomplete="new-password" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="reset-password-confirm">Confirm New Password</label>
+                            <input class="form-input" type="password" id="reset-password-confirm" minlength="8" maxlength="72" autocomplete="new-password" required>
+                        </div>
+                        <button type="submit" class="btn-submit-order">Update Password</button>
+                    </form>
+                    <button type="button" class="auth-link" id="back-to-login">Back to sign in</button>
+                </section>
+
                 <p class="guest-note">
                     Just browsing? <a href="../customer_side/index.html" class="auth-link">Continue as guest</a> — no account required to order.
                 </p>

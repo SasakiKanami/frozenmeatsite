@@ -5,6 +5,7 @@ import java.util.List;
 
 public record AdminProductDetails(
         Integer productId,
+        String sku,
         String name,
         String category,
         String temperatureTier,
@@ -14,5 +15,6 @@ public record AdminProductDetails(
         BigDecimal reorderLevel,
         Boolean visible,
         BigDecimal inStockQty,
+        List<String> aliases,
         List<AdminBatchDetails> batches) {
 }

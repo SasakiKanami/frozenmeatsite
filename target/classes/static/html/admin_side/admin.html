@@ -23,6 +23,8 @@
                 <a href="../customer_side/index.html" target="_blank" class="nav-link">View Storefront</a>
                 <span class="divider">|</span> 
                 <a href="../admin_side/admin_add_items.html" target="_blank" class="nav-link">Add Items</a>
+                <span class="divider">|</span>
+                <a href="deleted_items.html" class="nav-link">View Deleted Items</a>
             </nav>
         </div>
     </header>
@@ -109,8 +111,9 @@
         <!-- Tabs -->
         <div class="admin-tabs">
             <button class="admin-tab active" id="tab-btn-inventory" type="button" onclick="switchTab('inventory')">Inventory</button>
-            <button class="admin-tab" id="tab-btn-orders" type="button" onclick="switchTab('orders')">Guest Orders</button>
+            <button class="admin-tab" id="tab-btn-orders" type="button" onclick="switchTab('orders')">Guest / Walk-in Orders</button>
             <button class="admin-tab" id="tab-btn-orders_from_accounts" type="button" onclick="switchTab('orders_from_accounts')">Registered Account Orders</button>
+            <button class="admin-tab" id="tab-btn-pos" type="button" onclick="switchTab('pos')">Walk-in POS</button>
         </div>
 
         <!-- Inventory Tab -->
@@ -133,10 +136,12 @@
                         <thead>
                             <tr>
                                 <th>Product</th>
+                                <th>SKU</th>
                                 <th>Unit Price</th>
                                 <th>Status</th>
                                 <th>Stock on Hand</th>
                                 <th>Customer storefront</th>
+                                <th>Actions</th>
                             </tr>
                         </thead>
                         <tbody id="inventory-table-body">
@@ -152,8 +157,8 @@
             <div class="admin-panel">
                 <div class="admin-panel-header">
                     <div>
-                        <div class="admin-panel-title">Guest Order Log</div>
-                        <div class="admin-panel-sub">Orders placed through the storefront's guest checkout.</div>
+                        <div class="admin-panel-title">Guest and Walk-in Order Log</div>
+                        <div class="admin-panel-sub">Orders placed through guest checkout or the staff point-of-sale.</div>
                     </div>
                 </div>
                 <p class="empty-orders-msg hidden" id="orders-empty-msg">No orders placed yet. Reserve something from the storefront to see it appear here.</p>
@@ -166,9 +171,10 @@
                                 <th>Customer</th>
                                 <th>Items</th>
                                 <th>Fulfillment</th>
-                                <th>Payment</th>
-                                <th>Status</th>
+                                <th>Payment Preference</th>
+                                <th>Payment Status</th>
                                 <th>Total</th>
+                                <th>Order Actions</th>
                             </tr>
                         </thead>
                         <tbody id="orders-table-body">
@@ -198,9 +204,10 @@
                                 <th>Customer</th>
                                 <th>Items</th>
                                 <th>Fulfillment</th>
-                                <th>Payment</th>
-                                <th>Status</th>
+                                <th>Payment Preference</th>
+                                <th>Payment Status</th>
                                 <th>Total</th>
+                                <th>Order Actions</th>
                             </tr>
                         </thead>
                         <tbody id="account-orders-table-body">
@@ -211,6 +218,50 @@
             </div>
         </section>
 
+        <section class="admin-tab-panel" id="tab-panel-pos">
+            <div class="admin-panel">
+                <div class="admin-panel-header">
+                    <div>
+                        <div class="admin-panel-title">Walk-in Point of Sale</div>
+                        <div class="admin-panel-sub">Creates a pending walk-in order and deducts current FIFO stock. Record payment status separately after collecting payment.</div>
+                    </div>
+                </div>
+                <form id="pos-form" class="pos-form">
+                    <div class="form-group">
+                        <label class="form-label" for="pos-customer-name">Customer name</label>
+                        <input class="form-input" id="pos-customer-name" maxlength="100" value="Walk-in Customer">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="pos-customer-contact">Contact (optional)</label>
+                        <input class="form-input" id="pos-customer-contact" maxlength="30">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="pos-payment-method">Payment preference</label>
+                        <select class="form-input" id="pos-payment-method" required>
+                            <option value="Cash on Pickup / Delivery">Cash</option>
+                            <option value="GCash Transfer">GCash</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="pos-product">Product</label>
+                        <select class="form-input" id="pos-product" required></select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="pos-quantity">Quantity</label>
+                        <input class="form-input" id="pos-quantity" type="number" min="0.01" step="0.01" value="1" required>
+                    </div>
+                    <button class="btn-submit-order" type="button" id="pos-add-item">Add Item</button>
+                    <button class="btn-submit-order" type="submit">Create Walk-in Order</button>
+                </form>
+                <p class="stock-adjustment-message" id="pos-message" role="status" aria-live="polite"></p>
+                <div class="table-scroll">
+                    <table class="admin-table">
+                        <thead><tr><th>Product</th><th>Quantity</th><th>Unit Price</th><th>Subtotal</th><th></th></tr></thead>
+                        <tbody id="pos-cart-body"></tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
 
     </main>
 

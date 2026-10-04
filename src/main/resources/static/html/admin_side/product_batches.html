@@ -16,7 +16,10 @@
             </div>
             <nav class="nav-links">
                 <a href="admin.html" class="nav-link">Back to Inventory</a>
+                <span class="divider">|</span> 
                 <a href="../customer_side/index.html" target="_blank" class="nav-link">View Storefront</a>
+                <span class="divider">|</span> 
+                <a href="deleted_items.html" class="nav-link">View Deleted Items</a>
             </nav>
         </div>
     </header>
@@ -27,6 +30,34 @@
 
         <section class="admin-panel product-summary-panel" id="product-summary" aria-live="polite">
             <p>Loading product details…</p>
+        </section>
+
+        <section class="admin-panel">
+            <div class="admin-panel-header">
+                <div>
+                    <h2 class="admin-panel-title">Product Identifier</h2>
+                    <p class="admin-panel-sub">The SKU identifies this product across all batches. Changing it retires the old SKU so it cannot be reused.</p>
+                </div>
+            </div>
+            <form id="product-sku-form" class="product-identity-form">
+                <div class="form-group">
+                    <label class="form-label" for="product-sku-value">Product SKU</label>
+                    <input class="form-input" id="product-sku-value" maxlength="40" required>
+                </div>
+                <button class="btn-restock" type="submit">Update SKU</button>
+            </form>
+            <div class="product-aliases-wrap">
+                <h3 class="admin-panel-title">Alternate Names</h3>
+                <p class="admin-panel-sub">Use these names to find this same product during stock intake.</p>
+                <div id="product-alias-list" class="product-alias-list"></div>
+                <form id="product-alias-form" class="product-identity-form">
+                    <div class="form-group">
+                        <label class="form-label" for="product-alias-value">Add alternate name</label>
+                        <input class="form-input" id="product-alias-value" maxlength="120" required>
+                    </div>
+                    <button class="btn-restock" type="submit">Add Name</button>
+                </form>
+            </div>
         </section>
 
         <section class="admin-panel batch-receive-panel">

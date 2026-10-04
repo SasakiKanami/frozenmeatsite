@@ -13,6 +13,10 @@ public class OrderItem {
 
     private Integer orderId;
     private Integer productId;
+    private Integer productIdSnapshot;
+    private String productNameSnapshot;
+    private String productUnitSnapshot;
+    private String productSkuSnapshot;
     private BigDecimal quantity;
     private BigDecimal unitPrice;
     private BigDecimal subtotal;
@@ -47,6 +51,38 @@ public class OrderItem {
 
     public void setProductId(Integer productId) {
         this.productId = productId;
+    }
+
+    public Integer getProductIdSnapshot() {
+        return productIdSnapshot;
+    }
+
+    public void setProductIdSnapshot(Integer productIdSnapshot) {
+        this.productIdSnapshot = productIdSnapshot;
+    }
+
+    public String getProductNameSnapshot() {
+        return productNameSnapshot;
+    }
+
+    public void setProductNameSnapshot(String productNameSnapshot) {
+        this.productNameSnapshot = productNameSnapshot;
+    }
+
+    public String getProductUnitSnapshot() {
+        return productUnitSnapshot;
+    }
+
+    public void setProductUnitSnapshot(String productUnitSnapshot) {
+        this.productUnitSnapshot = productUnitSnapshot;
+    }
+
+    public String getProductSkuSnapshot() {
+        return productSkuSnapshot;
+    }
+
+    public void setProductSkuSnapshot(String productSkuSnapshot) {
+        this.productSkuSnapshot = productSkuSnapshot;
     }
 
     public Integer getOrderId() {

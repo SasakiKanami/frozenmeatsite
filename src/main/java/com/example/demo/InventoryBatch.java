@@ -14,6 +14,9 @@ public class InventoryBatch {
     private Integer id;
 
     private Integer productId;
+    private Integer productIdSnapshot;
+    private String productNameSnapshot;
+    private String productSkuSnapshot;
     private String batchNumber;
     private String supplierName = "Direct Meat Supplier";
     private BigDecimal initialQty;
@@ -46,6 +49,30 @@ public class InventoryBatch {
 
     public void setProductId(Integer productId) {
         this.productId = productId;
+    }
+
+    public Integer getProductIdSnapshot() {
+        return productIdSnapshot;
+    }
+
+    public void setProductIdSnapshot(Integer productIdSnapshot) {
+        this.productIdSnapshot = productIdSnapshot;
+    }
+
+    public String getProductNameSnapshot() {
+        return productNameSnapshot;
+    }
+
+    public void setProductNameSnapshot(String productNameSnapshot) {
+        this.productNameSnapshot = productNameSnapshot;
+    }
+
+    public String getProductSkuSnapshot() {
+        return productSkuSnapshot;
+    }
+
+    public void setProductSkuSnapshot(String productSkuSnapshot) {
+        this.productSkuSnapshot = productSkuSnapshot;
     }
 
     public String getBatchNumber() {

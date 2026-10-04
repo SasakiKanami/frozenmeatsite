@@ -7,10 +7,13 @@ DROP TABLE IF EXISTS archived_orders CASCADE;
 DROP TABLE IF EXISTS password_reset_tokens CASCADE;
 DROP TABLE IF EXISTS batch_deductions CASCADE;
 DROP TABLE IF EXISTS order_items CASCADE;
+DROP TABLE IF EXISTS product_aliases CASCADE;
+DROP TABLE IF EXISTS product_sku_registry CASCADE;
 DROP TABLE IF EXISTS orders CASCADE;
 DROP TABLE IF EXISTS inventory_batches CASCADE;
 DROP TABLE IF EXISTS products CASCADE;
 DROP TABLE IF EXISTS users CASCADE;
+DROP SEQUENCE IF EXISTS product_sku_sequence CASCADE;
 
 -- 1. Users Table (Role-based access & hashed passwords)
 CREATE TABLE users (
@@ -41,6 +44,7 @@ CREATE TABLE password_reset_tokens (
 -- 2. Products Table (Includes image_url for admin uploads)
 CREATE TABLE products (
     id SERIAL PRIMARY KEY,
+    sku VARCHAR(40) UNIQUE NOT NULL,
     name VARCHAR(120) UNIQUE NOT NULL,
     category VARCHAR(50) NOT NULL, 
     temperature_tier VARCHAR(30) NOT NULL CHECK (temperature_tier IN ('Fresh Chilled', 'Deep Freeze', 'Processed Pack')),
@@ -57,7 +61,10 @@ CREATE TABLE products (
 -- 3. Inventory Batches Table (Arrival tracking for strict FIFO deduction)
 CREATE TABLE inventory_batches (
     id SERIAL PRIMARY KEY,
-    product_id INT NOT NULL REFERENCES products(id) ON DELETE RESTRICT,
+    product_id INT NULL REFERENCES products(id) ON DELETE RESTRICT,
+    product_id_snapshot INT NULL,
+    product_name_snapshot VARCHAR(120) NULL,
+    product_sku_snapshot VARCHAR(40) NULL,
     batch_number VARCHAR(50) NOT NULL,
     supplier_name VARCHAR(100) DEFAULT 'Direct Meat Supplier',
     initial_qty NUMERIC(10, 2) NOT NULL CHECK (initial_qty > 0),
@@ -68,6 +75,25 @@ CREATE TABLE inventory_batches (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     deleted_at TIMESTAMP NULL
 );
+
+CREATE TABLE product_sku_registry (
+    sku VARCHAR(40) PRIMARY KEY,
+    product_id INT NULL REFERENCES products(id) ON DELETE SET NULL,
+    allocated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE SEQUENCE product_sku_sequence START WITH 1;
+
+CREATE TABLE product_aliases (
+    id SERIAL PRIMARY KEY,
+    product_id INT NULL REFERENCES products(id) ON DELETE SET NULL,
+    alias VARCHAR(120) NOT NULL,
+    retired_product_id INT NULL,
+    retired_product_sku VARCHAR(40) NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE UNIQUE INDEX product_aliases_alias_unique ON product_aliases (LOWER(alias));
 
 -- 4. Orders Table (Matches guest forms and POS checkouts)
 CREATE TABLE orders (
@@ -96,7 +122,11 @@ CREATE TABLE orders (
 CREATE TABLE order_items (
     id SERIAL PRIMARY KEY,
     order_id INT NOT NULL REFERENCES orders(id) ON DELETE RESTRICT,
-    product_id INT NOT NULL REFERENCES products(id) ON DELETE RESTRICT,
+    product_id INT NULL REFERENCES products(id) ON DELETE RESTRICT,
+    product_id_snapshot INT NULL,
+    product_name_snapshot VARCHAR(120) NULL,
+    product_unit_snapshot VARCHAR(20) NULL,
+    product_sku_snapshot VARCHAR(40) NULL,
     quantity NUMERIC(10, 2) NOT NULL CHECK (quantity > 0),
     unit_price NUMERIC(10, 2) NOT NULL CHECK (unit_price >= 0),
     subtotal NUMERIC(10, 2) NOT NULL CHECK (subtotal >= 0)

@@ -47,6 +47,31 @@ async function toggleProductVisibility(button) {
     }
 }
 
+async function moveProductToTrash(button) {
+    const productId = button.dataset.productId;
+    if (!window.confirm('Move this product to the trash? It will be removed from active inventory and the storefront.')) {
+        return;
+    }
+
+    button.disabled = true;
+    setStockAdjustmentMessage('');
+    try {
+        const response = await fetch(`/api/admin/products/${encodeURIComponent(productId)}`, {
+            method: 'DELETE',
+            headers: csrfHeaders()
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(result.error || `Unable to move product to trash: ${response.status}`);
+        await loadInventory();
+        setStockAdjustmentMessage(result.message);
+    } catch (error) {
+        setStockAdjustmentMessage(error.message || 'Unable to move product to trash.', true);
+        console.error('Unable to move product to trash:', error);
+    } finally {
+        button.disabled = false;
+    }
+}
+
 function escapeHtml(value) {
     return String(value ?? '').replace(/[&<>"']/g, character => ({
         '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
@@ -91,6 +116,7 @@ function renderInventory(products) {
                 <a class="inventory-product-link" href="product_batches.html?id=${encodeURIComponent(product.productId)}">${escapeHtml(product.name)}</a>
                 <a class="inventory-manage-link" href="product_batches.html?id=${encodeURIComponent(product.productId)}">Manage batches</a>
             </td>
+            <td>${escapeHtml(product.sku)}</td>
             <td>₱${Number(product.pricePerUnit).toFixed(2)} / ${product.unit}</td>
             <td><span class="stock-pill ${status.className}">${status.text}</span></td>
             <td class="stock-qty-value">${quantity} ${product.unit}</td>
@@ -99,6 +125,9 @@ function renderInventory(products) {
                     ${product.visible ? 'Hide item' : 'Show item'}
                 </button>
             </td>
+            <td>
+                <button class="btn-delete-product" type="button" data-product-action="trash" data-product-id="${escapeHtml(product.productId)}">Move to Trash</button>
+            </td>
         `;
         tableBody.appendChild(row);
     });
@@ -106,7 +135,7 @@ function renderInventory(products) {
     if (visibleProducts.length === 0) {
         const row = document.createElement('tr');
         const message = document.createElement('td');
-        message.colSpan = 5;
+        message.colSpan = 7;
         message.className = 'inventory-no-results';
         message.textContent = searchTerm
             ? `No inventory items match "${document.getElementById('inventory-search').value.trim()}".`
@@ -136,7 +165,7 @@ async function loadInventory() {
         renderPosProductOptions();
     } catch (error) {
         if (tableBody) {
-            tableBody.innerHTML = '<tr><td colspan="5">Inventory is temporarily unavailable.</td></tr>';
+            tableBody.innerHTML = '<tr><td colspan="7">Inventory is temporarily unavailable.</td></tr>';
         }
         console.error('Unable to load admin inventory:', error);
     }
@@ -331,7 +360,7 @@ function renderPosProductOptions() {
     inventoryProducts.forEach(product => {
         const option = document.createElement('option');
         option.value = product.productId;
-        option.textContent = `${product.name} — ₱${Number(product.pricePerUnit).toFixed(2)} / ${product.unit} (${product.inStockQty} available)`;
+        option.textContent = `${product.sku} · ${product.name} — ₱${Number(product.pricePerUnit).toFixed(2)} / ${product.unit} (${product.inStockQty} available)`;
         option.disabled = Number(product.inStockQty) <= 0;
         select.appendChild(option);
     });
@@ -431,9 +460,15 @@ document.addEventListener('DOMContentLoaded', () => {
     updateAdminClock();
     setInterval(updateAdminClock, 1000);
     document.getElementById('inventory-table-body')?.addEventListener('click', event => {
-        const button = event.target.closest('[data-product-visibility]');
-        if (!button) return;
-        toggleProductVisibility(button);
+        const target = event.target;
+        if (!(target instanceof Element)) return;
+        const visibilityButton = target.closest('[data-product-visibility]');
+        if (visibilityButton) {
+            toggleProductVisibility(visibilityButton);
+            return;
+        }
+        const trashButton = target.closest('[data-product-action="trash"]');
+        if (trashButton) moveProductToTrash(trashButton);
     });
     document.getElementById('inventory-search')?.addEventListener('input', () => {
         renderInventory(inventoryProducts);

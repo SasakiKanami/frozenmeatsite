@@ -17,6 +17,7 @@ public class Product {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
 
+    private String sku;
     private String name;
     private String category;
     private String temperatureTier;
@@ -40,6 +41,14 @@ public class Product {
 
     public String getName() {
         return name;
+    }
+
+    public String getSku() {
+        return sku;
+    }
+
+    public void setSku(String sku) {
+        this.sku = sku;
     }
 
     public void setName(String name) {

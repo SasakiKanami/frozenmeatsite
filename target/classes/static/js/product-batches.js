@@ -58,6 +58,7 @@ function renderProductDetails(product) {
             <div class="product-summary-details">
                 <p class="admin-eyebrow">Product inventory</p>
                 <h1 class="product-summary-name">${escapeBatchText(product.name)}</h1>
+                <p class="product-summary-category">SKU: <strong>${escapeBatchText(product.sku)}</strong></p>
                 <p class="product-summary-category">${escapeBatchText(product.category)} · ${escapeBatchText(product.temperatureTier)}</p>
                 <div class="product-summary-stats">
                     <div><span>Price per unit</span><strong>₱${Number(product.pricePerUnit).toFixed(2)} / ${escapeBatchText(product.unit)}</strong></div>
@@ -68,6 +69,10 @@ function renderProductDetails(product) {
             </div>
         </div>
     `;
+    document.getElementById('product-sku-value').value = product.sku;
+    document.getElementById('product-alias-list').innerHTML = product.aliases.length
+        ? product.aliases.map(alias => `<span class="product-alias-chip">${escapeBatchText(alias)}</span>`).join('')
+        : '<span class="admin-panel-sub">No alternate names added.</span>';
     document.title = `${product.name} Batches | J&R Frozen Goods`;
 
     const quantityInput = document.getElementById('batch-quantity');
@@ -153,6 +158,53 @@ async function loadProductBatches() {
 document.addEventListener('DOMContentLoaded', async () => {
     const productId = await loadProductBatches();
     if (!productId) return;
+
+    document.getElementById('product-sku-form').addEventListener('submit', async event => {
+        event.preventDefault();
+        const form = event.currentTarget;
+        const button = form.querySelector('button[type="submit"]');
+        button.disabled = true;
+        try {
+            const response = await fetch(`/api/admin/products/${encodeURIComponent(productId)}/sku`, {
+                method: 'PUT',
+                headers: csrfHeaders({ 'Content-Type': 'application/json' }),
+                body: JSON.stringify({ sku: document.getElementById('product-sku-value').value })
+            });
+            const result = await response.json().catch(() => ({}));
+            if (!response.ok) throw new Error(result.error || `SKU update failed: ${response.status}`);
+            await loadProductBatches();
+            setBatchPageMessage(result.message);
+        } catch (error) {
+            setBatchPageMessage(error.message || 'Unable to update the product SKU.', true);
+            console.error('Unable to update product SKU:', error);
+        } finally {
+            button.disabled = false;
+        }
+    });
+
+    document.getElementById('product-alias-form').addEventListener('submit', async event => {
+        event.preventDefault();
+        const form = event.currentTarget;
+        const button = form.querySelector('button[type="submit"]');
+        button.disabled = true;
+        try {
+            const response = await fetch(`/api/admin/products/${encodeURIComponent(productId)}/aliases`, {
+                method: 'POST',
+                headers: csrfHeaders({ 'Content-Type': 'application/json' }),
+                body: JSON.stringify({ alias: document.getElementById('product-alias-value').value })
+            });
+            const result = await response.json().catch(() => ({}));
+            if (!response.ok) throw new Error(result.error || `Alternate name update failed: ${response.status}`);
+            form.reset();
+            await loadProductBatches();
+            setBatchPageMessage(result.message);
+        } catch (error) {
+            setBatchPageMessage(error.message || 'Unable to add the alternate name.', true);
+            console.error('Unable to add product alias:', error);
+        } finally {
+            button.disabled = false;
+        }
+    });
 
     document.getElementById('batch-table-body').addEventListener('click', async event => {
         const button = event.target.closest('[data-save-expiration]');

@@ -83,12 +83,16 @@ public class OrderController {
         Set<Integer> productIds = new HashSet<>();
         for (OrderItem item : orderItemRepository.findByOrderIdIn(orderIds)) {
             itemsByOrder.computeIfAbsent(item.getOrderId(), key -> new ArrayList<>()).add(item);
-            productIds.add(item.getProductId());
+            if (item.getProductId() != null) {
+                productIds.add(item.getProductId());
+            }
         }
 
         Map<Integer, Product> productsById = new HashMap<>();
-        for (Product product : productRepository.findAllById(productIds)) {
-            productsById.put(product.getId(), product);
+        if (!productIds.isEmpty()) {
+            for (Product product : productRepository.findAllById(productIds)) {
+                productsById.put(product.getId(), product);
+            }
         }
 
         Map<Integer, String> usernamesById = new HashMap<>();
@@ -124,9 +128,15 @@ public class OrderController {
             for (OrderItem item : itemsByOrder.getOrDefault(order.getId(), new ArrayList<>())) {
                 Product product = productsById.get(item.getProductId());
                 Map<String, Object> itemRow = new LinkedHashMap<>();
-                itemRow.put("productId", item.getProductId());
-                itemRow.put("productName", product == null ? "Product #" + item.getProductId() : product.getName());
-                itemRow.put("unit", product == null ? null : product.getUnit());
+                itemRow.put("productId", item.getProductIdSnapshot() != null
+                        ? item.getProductIdSnapshot() : item.getProductId());
+                itemRow.put("productName", item.getProductNameSnapshot() != null
+                        ? item.getProductNameSnapshot()
+                        : product == null ? "Product #" + item.getProductId() : product.getName());
+                itemRow.put("sku", item.getProductSkuSnapshot() != null
+                        ? item.getProductSkuSnapshot() : product == null ? null : product.getSku());
+                itemRow.put("unit", item.getProductUnitSnapshot() != null
+                        ? item.getProductUnitSnapshot() : product == null ? null : product.getUnit());
                 itemRow.put("quantity", item.getQuantity());
                 itemRow.put("unitPrice", item.getUnitPrice());
                 itemRow.put("subtotal", item.getSubtotal());
@@ -241,7 +251,9 @@ public class OrderController {
         List<Integer> itemIds = items.stream().map(OrderItem::getId).toList();
         if (itemIds.isEmpty()) return true;
 
-        List<BatchDeduction> deductions = batchDeductionRepository.findByOrderItemIdIn(itemIds).stream()
+        List<BatchDeduction> recordedDeductions = batchDeductionRepository.findByOrderItemIdIn(itemIds);
+        if (recordedDeductions.stream().anyMatch(deduction -> deduction.getBatchId() == null)) return false;
+        List<BatchDeduction> deductions = recordedDeductions.stream()
                 .sorted(java.util.Comparator.comparing(BatchDeduction::getBatchId))
                 .toList();
         Map<Integer, InventoryBatch> batches = new LinkedHashMap<>();

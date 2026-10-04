@@ -125,6 +125,77 @@
     margin-bottom: 0;
 }
 
+#pos-message {
+    margin: 0 0 1rem;
+}
+
+#deleted-items-message {
+    margin: 0 0 1rem;
+}
+
+.btn-delete-product,
+.trash-action-button {
+    border: 1px solid #fecaca;
+    border-radius: 7px;
+    background: #ffffff;
+    color: #b91c1c;
+    padding: 0.45rem 0.7rem;
+    font: inherit;
+    font-size: 0.8rem;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.btn-delete-product:hover,
+.trash-action-button:hover {
+    background: #fef2f2;
+}
+
+.btn-delete-product:disabled,
+.trash-action-button:disabled {
+    cursor: wait;
+    opacity: 0.6;
+}
+
+.trash-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.product-identity-form {
+    display: flex;
+    align-items: end;
+    gap: 0.8rem;
+    max-width: 560px;
+}
+
+.product-identity-form .form-group {
+    flex: 1;
+    margin-bottom: 0;
+}
+
+.product-aliases-wrap {
+    margin-top: 1.5rem;
+}
+
+.product-alias-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin: 0.7rem 0 1rem;
+}
+
+.product-alias-chip {
+    border: 1px solid var(--glass-border-ice);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.8);
+    padding: 0.3rem 0.7rem;
+    color: var(--text-main);
+    font-size: 0.82rem;
+    font-weight: 600;
+}
+
 /* --- Stat Cards --- */
 .stats-grid {
     display: grid;
@@ -755,5 +826,14 @@
 
     .product-summary-name {
         font-size: 1.45rem;
+    }
+
+    .product-identity-form {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .product-identity-form button {
+        width: 100%;
     }
 }
