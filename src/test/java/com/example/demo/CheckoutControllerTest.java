@@ -189,6 +189,7 @@ class CheckoutControllerTest {
         verify(orderRepository).save(orderCaptor.capture());
         assertEquals(new BigDecimal("25.00"), orderCaptor.getValue().getDeliveryFee());
         assertEquals(new BigDecimal("75.00"), orderCaptor.getValue().getTotalAmount());
+        assertEquals("Order Being Prepared", orderCaptor.getValue().getDeliveryStatus());
     }
 
     private InventoryBatch batch(Integer id, String remaining) {

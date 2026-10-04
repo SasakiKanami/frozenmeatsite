@@ -325,6 +325,13 @@ async function handleGuestCheckout(event) {
         document.getElementById('conf-name').textContent = guestName;
         document.getElementById('conf-phone').textContent = guestPhone;
         document.getElementById('conf-fulfillment').textContent = fulfillmentType.toUpperCase();
+        const deliveryStatusLine = document.getElementById('conf-delivery-status-line');
+        if (deliveryStatusLine) {
+            deliveryStatusLine.classList.toggle('hidden', fulfillmentType !== 'Same-Day Delivery');
+            if (fulfillmentType === 'Same-Day Delivery') {
+                document.getElementById('conf-delivery-status').textContent = 'Order Being Prepared';
+            }
+        }
         document.getElementById('conf-payment').textContent = paymentMethod.toUpperCase();
         document.getElementById('conf-delivery-fee').textContent = `₱${Number(result.deliveryFee || 0).toFixed(2)}`;
         document.getElementById('conf-total').textContent = `₱${Number(result.totalAmount).toFixed(2)}`;

@@ -33,7 +33,7 @@ function renderCustomerOrders(orders) {
             <td class="ref-pill">${escapeOrderText(order.referenceId)}</td>
             <td>${formatOrderDate(order.createdAt)}</td>
             <td class="order-items-list">${items || '—'}</td>
-            <td><strong>${escapeOrderText(order.fulfillmentMethod)}</strong>${order.deliveryAddress ? `<div class="order-items-list">${escapeOrderText(order.deliveryAddress)}</div>` : ''}</td>
+            <td><strong>${escapeOrderText(order.fulfillmentMethod)}</strong>${order.deliveryAddress ? `<div class="order-items-list">${escapeOrderText(order.deliveryAddress)}</div>` : ''}${order.fulfillmentMethod === 'Same-Day Delivery' ? `<div class="order-delivery-status">${escapeOrderText(order.deliveryStatus || 'Order Being Prepared')}</div>` : ''}</td>
             <td>${escapeOrderText(order.orderStatus)}</td>
             <td>${escapeOrderText(order.paymentMethod)}<div class="order-items-list">${escapeOrderText(order.paymentStatus)}</div></td>
             <td class="stock-qty-value">₱${Number(order.totalAmount).toFixed(2)}</td>

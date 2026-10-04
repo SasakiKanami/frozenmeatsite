@@ -26,6 +26,8 @@ public class Order {
     private String paymentStatus = "unpaid";
     private BigDecimal totalAmount;
     private String orderStatus = "pending";
+    @Column(name = "delivery_status")
+    private String deliveryStatus;
 
     private Integer createdByUserId;
 
@@ -125,6 +127,9 @@ public class Order {
     public void setOrderStatus(String orderStatus) {
         this.orderStatus = orderStatus;
     }
+
+    public String getDeliveryStatus() { return deliveryStatus; }
+    public void setDeliveryStatus(String deliveryStatus) { this.deliveryStatus = deliveryStatus; }
 
     public Integer getCreatedByUserId() { return createdByUserId; }
     public void setCreatedByUserId(Integer createdByUserId) { this.createdByUserId = createdByUserId; }

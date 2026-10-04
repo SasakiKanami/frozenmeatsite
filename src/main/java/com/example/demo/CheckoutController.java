@@ -168,6 +168,9 @@ public class CheckoutController {
         order.setPaymentMethod(submittedOrder.getPaymentMethod());
         order.setPaymentStatus("unpaid");
         order.setOrderStatus("pending");
+        if ("Same-Day Delivery".equals(submittedOrder.getFulfillmentMethod())) {
+            order.setDeliveryStatus("Order Being Prepared");
+        }
         order.setTotalAmount(total.add(deliveryFee));
         Order savedOrder = orderRepository.save(order);
 

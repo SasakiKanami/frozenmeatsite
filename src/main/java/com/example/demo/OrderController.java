@@ -116,6 +116,7 @@ public class OrderController {
             row.put("customerUserId", order.getCustomerUserId());
             row.put("accountUsername", order.getCustomerUserId() == null ? null : usernamesById.get(order.getCustomerUserId()));
             row.put("fulfillmentMethod", order.getFulfillmentMethod());
+            row.put("deliveryStatus", order.getDeliveryStatus());
             row.put("deliveryAddress", order.getDeliveryAddress());
             row.put("deliveryNotes", order.getDeliveryNotes());
             row.put("paymentMethod", order.getPaymentMethod());
@@ -142,10 +143,42 @@ public class OrderController {
                 itemRow.put("subtotal", item.getSubtotal());
                 items.add(itemRow);
             }
+
             row.put("items", items);
             response.add(row);
         }
         return response;
+    }
+
+    @PutMapping("/orders/{orderId}/delivery-status")
+    @Transactional
+    public ResponseEntity<?> updateDeliveryStatus(
+            @PathVariable Integer orderId,
+            @RequestBody DeliveryStatusRequest request) {
+        if (request == null || request.getDeliveryStatus() == null) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Choose a delivery status"));
+        }
+        String status = request.getDeliveryStatus().trim();
+        if (!List.of("Order Being Prepared", "Delivery On the Way", "Delivered").contains(status)) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Delivery status must be Order Being Prepared, Delivery On the Way, or Delivered"));
+        }
+
+        Order order = orderRepository.findByIdForUpdate(orderId).orElse(null);
+        if (order == null || Boolean.TRUE.equals(order.getDeleted())) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Order not found"));
+        }
+        if (!"Same-Day Delivery".equals(order.getFulfillmentMethod())) {
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(Map.of("error", "Delivery status only applies to delivery orders"));
+        }
+        if ("cancelled".equalsIgnoreCase(order.getOrderStatus())) {
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(Map.of("error", "Delivery status cannot be changed for a cancelled order"));
+        }
+
+        order.setDeliveryStatus(status);
+        orderRepository.save(order);
+        return ResponseEntity.ok(Map.of("message", "Delivery status updated", "deliveryStatus", status));
     }
 
     @PutMapping("/orders/{orderId}/payment-status")
@@ -286,4 +319,11 @@ class OrderStatusRequest {
 
     public String getOrderStatus() { return orderStatus; }
     public void setOrderStatus(String orderStatus) { this.orderStatus = orderStatus; }
+}
+
+class DeliveryStatusRequest {
+    private String deliveryStatus;
+
+    public String getDeliveryStatus() { return deliveryStatus; }
+    public void setDeliveryStatus(String deliveryStatus) { this.deliveryStatus = deliveryStatus; }
 }

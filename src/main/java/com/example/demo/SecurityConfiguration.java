@@ -58,7 +58,8 @@ public class SecurityConfiguration {
                         .requestMatchers(HttpMethod.GET, "/api/products").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/orders").hasAnyRole("ADMIN", "CASHIER")
                         .requestMatchers(HttpMethod.PUT, "/api/orders/*/payment-status",
-                                "/api/orders/*/status", "/api/orders/*/archive").hasAnyRole("ADMIN", "CASHIER")
+                                "/api/orders/*/status", "/api/orders/*/archive",
+                                "/api/orders/*/delivery-status").hasAnyRole("ADMIN", "CASHIER")
                         .requestMatchers("/api/account/orders").hasRole("CUSTOMER")
                         .requestMatchers("/api/account/profile").hasRole("CUSTOMER")
                         .requestMatchers(HttpMethod.POST, "/api/orders").permitAll()

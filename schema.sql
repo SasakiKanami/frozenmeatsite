@@ -108,6 +108,7 @@ CREATE TABLE orders (
     delivery_address TEXT,
     delivery_notes TEXT,
     delivery_fee NUMERIC(10, 2) NOT NULL DEFAULT 0.00 CHECK (delivery_fee >= 0),
+    delivery_status VARCHAR(40) NULL CHECK (delivery_status IS NULL OR delivery_status IN ('Order Being Prepared', 'Delivery On the Way', 'Delivered')),
     payment_method VARCHAR(50) NOT NULL CHECK (payment_method IN ('Cash on Pickup / Delivery', 'GCash Transfer')),
     payment_status VARCHAR(20) NOT NULL DEFAULT 'unpaid' CHECK (payment_status IN ('unpaid', 'pending', 'paid', 'failed')),
     total_amount NUMERIC(10, 2) NOT NULL DEFAULT 0.00 CHECK (total_amount >= 0),

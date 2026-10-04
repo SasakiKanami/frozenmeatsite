@@ -114,6 +114,15 @@
     color: #b91c1c;
 }
 
+.order-delivery-status-label,
+.order-delivery-status {
+    display: block;
+    margin-top: 0.35rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--text-muted);
+}
+
 .pos-form {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));

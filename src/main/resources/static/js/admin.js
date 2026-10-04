@@ -210,6 +210,7 @@ function buildOrderRow(order) {
     const originalPaymentStatus = String(order.paymentStatus || 'unpaid');
     const paymentStatus = originalPaymentStatus.toLowerCase();
     const orderStatus = String(order.orderStatus || 'pending').toLowerCase();
+    const deliveryStatus = String(order.deliveryStatus || 'Order Being Prepared');
     const legacyStatusOption = ['paid', 'unpaid'].includes(paymentStatus)
         ? ''
         : `<option value="${escapeHtml(paymentStatus)}" selected disabled>${escapeHtml(order.paymentStatus)}</option>`;
@@ -232,6 +233,15 @@ function buildOrderRow(order) {
         <td class="stock-qty-value">₱${Number(order.totalAmount).toFixed(2)}</td>
         <td>
             <strong>${escapeHtml(orderStatus)}</strong>
+            ${order.fulfillmentMethod === 'Same-Day Delivery' ? `
+                <label class="order-delivery-status-label" for="delivery-status-${escapeHtml(order.id)}">Delivery</label>
+                <select class="payment-status-select" id="delivery-status-${escapeHtml(order.id)}" data-delivery-status data-order-id="${escapeHtml(order.id)}" data-current-status="${escapeHtml(deliveryStatus)}" aria-label="Delivery status for ${escapeHtml(order.referenceId)}" ${orderStatus === 'cancelled' ? 'disabled' : ''}>
+                    <option value="Order Being Prepared" ${deliveryStatus === 'Order Being Prepared' ? 'selected' : ''}>Order Being Prepared</option>
+                    <option value="Delivery On the Way" ${deliveryStatus === 'Delivery On the Way' ? 'selected' : ''}>Delivery On the Way</option>
+                    <option value="Delivered" ${deliveryStatus === 'Delivered' ? 'selected' : ''}>Delivered</option>
+                </select>
+                <div class="delivery-status-message order-action-message" role="status" aria-live="polite"></div>
+            ` : ''}
             <div class="order-action-buttons">
                 ${orderStatus === 'pending' ? `<button type="button" data-order-action="complete" data-order-id="${escapeHtml(order.id)}">Complete</button><button type="button" data-order-action="cancel" data-order-id="${escapeHtml(order.id)}">Cancel</button>` : ''}
                 ${orderStatus === 'completed' ? `<button type="button" data-order-action="archive" data-order-id="${escapeHtml(order.id)}">Archive</button>` : ''}
@@ -240,6 +250,32 @@ function buildOrderRow(order) {
         </td>
     `;
     return row;
+}
+
+async function updateDeliveryStatus(select) {
+    const previousStatus = select.dataset.currentStatus;
+    const message = select.parentElement.querySelector('.delivery-status-message');
+    select.disabled = true;
+    message.textContent = '';
+    message.classList.remove('error');
+    try {
+        const response = await fetch(`/api/orders/${encodeURIComponent(select.dataset.orderId)}/delivery-status`, {
+            method: 'PUT',
+            headers: csrfHeaders({ 'Content-Type': 'application/json' }),
+            body: JSON.stringify({ deliveryStatus: select.value })
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(result.error || `Delivery status update failed: ${response.status}`);
+        select.dataset.currentStatus = select.value;
+        message.textContent = 'Saved';
+    } catch (error) {
+        select.value = previousStatus;
+        message.textContent = error.message || 'Unable to update delivery status.';
+        message.classList.add('error');
+        console.error('Unable to update order delivery status:', error);
+    } finally {
+        select.disabled = false;
+    }
 }
 
 async function updatePaymentStatus(select) {
@@ -476,8 +512,15 @@ document.addEventListener('DOMContentLoaded', () => {
     ['orders-table-body', 'account-orders-table-body'].forEach(bodyId => {
         const body = document.getElementById(bodyId);
         body?.addEventListener('change', event => {
-            const select = event.target.closest('[data-payment-status]');
-            if (select) updatePaymentStatus(select);
+            const target = event.target;
+            if (!(target instanceof Element)) return;
+            const deliveryStatus = target.closest('[data-delivery-status]');
+            if (deliveryStatus) {
+                updateDeliveryStatus(deliveryStatus);
+                return;
+            }
+            const paymentStatus = target.closest('[data-payment-status]');
+            if (paymentStatus) updatePaymentStatus(paymentStatus);
         });
         body?.addEventListener('click', event => {
             const button = event.target.closest('[data-order-action]');

@@ -60,6 +60,41 @@ class OrderControllerTest {
     }
 
     @Test
+    void updatesDeliveryStatusForDeliveryOrder() {
+        Order order = activeOrder();
+        order.setFulfillmentMethod("Same-Day Delivery");
+        when(orderRepository.findByIdForUpdate(12)).thenReturn(Optional.of(order));
+        DeliveryStatusRequest request = deliveryStatusRequest("Delivery On the Way");
+
+        ResponseEntity<?> response = controller.updateDeliveryStatus(12, request);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertEquals("Delivery On the Way", order.getDeliveryStatus());
+        verify(orderRepository).save(order);
+    }
+
+    @Test
+    void rejectsInvalidDeliveryStatus() {
+        ResponseEntity<?> response = controller.updateDeliveryStatus(12, deliveryStatusRequest("Shipped"));
+
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+        verify(orderRepository, never()).findByIdForUpdate(12);
+        verify(orderRepository, never()).save(any(Order.class));
+    }
+
+    @Test
+    void rejectsDeliveryStatusForPickupOrders() {
+        Order order = activeOrder();
+        order.setFulfillmentMethod("Storefront Pickup");
+        when(orderRepository.findByIdForUpdate(12)).thenReturn(Optional.of(order));
+
+        ResponseEntity<?> response = controller.updateDeliveryStatus(12, deliveryStatusRequest("Delivered"));
+
+        assertEquals(HttpStatus.CONFLICT, response.getStatusCode());
+        verify(orderRepository, never()).save(order);
+    }
+
+    @Test
     void returnsNotFoundForMissingOrder() {
         when(orderRepository.findByIdForUpdate(12)).thenReturn(Optional.empty());
 
@@ -169,6 +204,12 @@ class OrderControllerTest {
     private OrderStatusRequest statusRequest(String orderStatus) {
         OrderStatusRequest request = new OrderStatusRequest();
         request.setOrderStatus(orderStatus);
+        return request;
+    }
+
+    private DeliveryStatusRequest deliveryStatusRequest(String deliveryStatus) {
+        DeliveryStatusRequest request = new DeliveryStatusRequest();
+        request.setDeliveryStatus(deliveryStatus);
         return request;
     }
 }
