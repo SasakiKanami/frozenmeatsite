@@ -7,6 +7,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -35,9 +36,8 @@ public class OrderController {
     @Autowired private OrderItemRepository orderItemRepository;
     @Autowired private ProductRepository productRepository;
     @Autowired private UserRepository userRepository;
-    @Autowired private BatchDeductionRepository batchDeductionRepository;
-    @Autowired private InventoryBatchRepository batchRepository;
     @Autowired private ArchivedOrderRepository archivedOrderRepository;
+    @Autowired private OrderInventoryService orderInventoryService;
 
     // Newest first. Guest orders have customerUserId == null; registered-account orders carry the user's id.
     @GetMapping("/orders")
@@ -63,6 +63,30 @@ public class OrderController {
                 .filter(order -> !Boolean.TRUE.equals(order.getDeleted()))
                 .toList();
         return mapOrders(orders);
+    }
+
+    @PostMapping("/orders/guest-delivery-status")
+    @Transactional(readOnly = true)
+    public ResponseEntity<?> getGuestDeliveryStatus(@RequestBody GuestDeliveryStatusRequest request) {
+        if (request == null || request.getReferenceId() == null || request.getCustomerContact() == null
+                || request.getReferenceId().isBlank() || request.getCustomerContact().isBlank()
+                || request.getReferenceId().length() > 50 || request.getCustomerContact().length() > 30) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Order reference and contact number are required"));
+        }
+
+        Order order = orderRepository.findByReferenceIdAndCustomerContactAndCustomerUserIdIsNull(
+                request.getReferenceId().trim(), request.getCustomerContact().trim()).orElse(null);
+        if (order == null || Boolean.TRUE.equals(order.getDeleted())
+                || (!"Same-Day Delivery".equals(order.getFulfillmentMethod())
+                    && !"GCash Transfer".equals(order.getPaymentMethod()))) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Order not found"));
+        }
+
+        Map<String, Object> status = new LinkedHashMap<>();
+        status.put("paymentStatus", order.getPaymentStatus());
+        status.put("deliveryStatus", order.getDeliveryStatus());
+        status.put("orderStatus", order.getOrderStatus());
+        return ResponseEntity.ok(status);
     }
 
     private List<Map<String, Object>> mapOrders(List<Order> orders) {
@@ -121,6 +145,8 @@ public class OrderController {
             row.put("deliveryNotes", order.getDeliveryNotes());
             row.put("paymentMethod", order.getPaymentMethod());
             row.put("paymentStatus", order.getPaymentStatus());
+            row.put("paymentReference", order.getPaymentReference());
+            row.put("paymentDeadlineAt", order.getPaymentDeadlineAt());
             row.put("orderStatus", order.getOrderStatus());
             row.put("totalAmount", order.getTotalAmount());
             row.put("deliveryFee", order.getDeliveryFee());
@@ -175,6 +201,12 @@ public class OrderController {
             return ResponseEntity.status(HttpStatus.CONFLICT)
                     .body(Map.of("error", "Delivery status cannot be changed for a cancelled order"));
         }
+        if ("GCash Transfer".equals(order.getPaymentMethod())
+                && !"paid".equals(order.getPaymentStatus())
+                && !"Order Being Prepared".equals(status)) {
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(Map.of("error", "GCash payment must be confirmed before the order can be dispatched or delivered"));
+        }
 
         order.setDeliveryStatus(status);
         orderRepository.save(order);
@@ -187,21 +219,43 @@ public class OrderController {
             @PathVariable Integer orderId,
             @RequestBody PaymentStatusRequest request) {
         if (request == null || request.getPaymentStatus() == null) {
-            return ResponseEntity.badRequest().body(Map.of("error", "Payment status must be paid or unpaid"));
+            return ResponseEntity.badRequest().body(Map.of("error", "A valid payment status is required"));
         }
 
         String paymentStatus = request.getPaymentStatus().trim().toLowerCase(Locale.ROOT);
-        if (!paymentStatus.equals("paid") && !paymentStatus.equals("unpaid")) {
-            return ResponseEntity.badRequest().body(Map.of("error", "Payment status must be paid or unpaid"));
-        }
-
         Order order = orderRepository.findByIdForUpdate(orderId).orElse(null);
         if (order == null || Boolean.TRUE.equals(order.getDeleted())) {
             return ResponseEntity.status(404).body(Map.of("error", "Order not found"));
         }
-        if ("cancelled".equalsIgnoreCase(order.getOrderStatus())) {
+        boolean gcashPayment = "GCash Transfer".equals(order.getPaymentMethod());
+        if (gcashPayment && !List.of("pending", "paid").contains(paymentStatus)) {
+            return ResponseEntity.badRequest().body(Map.of("error", "GCash payment status must be pending or paid"));
+        }
+        if (!gcashPayment && !List.of("paid", "unpaid").contains(paymentStatus)) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Cash payment status must be paid or unpaid"));
+        }
+        if ("cancelled".equalsIgnoreCase(order.getOrderStatus())
+                || "cancelled".equalsIgnoreCase(order.getPaymentStatus())) {
             return ResponseEntity.status(HttpStatus.CONFLICT)
                     .body(Map.of("error", "Payment status cannot be changed for a cancelled order"));
+        }
+        if (gcashPayment && "pending".equals(order.getPaymentStatus())
+                && "paid".equals(paymentStatus)
+                && order.getPaymentDeadlineAt() != null
+                && !order.getPaymentDeadlineAt().isAfter(LocalDateTime.now())) {
+            if (!orderInventoryService.restoreOrderStock(order)) {
+                return ResponseEntity.status(HttpStatus.CONFLICT)
+                        .body(Map.of("error", "The payment window expired, but stock could not be restored because an original batch is missing"));
+            }
+            order.setPaymentStatus("cancelled");
+            order.setOrderStatus("cancelled");
+            orderRepository.save(order);
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(Map.of("error", "The 12-hour payment window expired. The order was cancelled and its stock released"));
+        }
+        if (gcashPayment && "paid".equals(order.getPaymentStatus()) && "pending".equals(paymentStatus)) {
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(Map.of("error", "A confirmed GCash payment cannot be changed back to pending"));
         }
 
         order.setPaymentStatus(paymentStatus);
@@ -237,14 +291,26 @@ public class OrderController {
             return ResponseEntity.status(HttpStatus.CONFLICT)
                     .body(Map.of("error", "Only pending orders can be completed or cancelled"));
         }
+        if (requestedStatus.equals("completed") && "GCash Transfer".equals(order.getPaymentMethod())
+                && !"paid".equals(order.getPaymentStatus())) {
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(Map.of("error", "GCash payment must be confirmed before completing the order"));
+        }
         if (requestedStatus.equals("cancelled")) {
-            if (!"unpaid".equalsIgnoreCase(order.getPaymentStatus())) {
+            boolean unpaidCashOrder = "Cash on Pickup / Delivery".equals(order.getPaymentMethod())
+                    && "unpaid".equals(order.getPaymentStatus());
+            boolean pendingGcashOrder = "GCash Transfer".equals(order.getPaymentMethod())
+                    && "pending".equals(order.getPaymentStatus());
+            if (!unpaidCashOrder && !pendingGcashOrder) {
                 return ResponseEntity.status(HttpStatus.CONFLICT)
-                        .body(Map.of("error", "Only unpaid orders can be cancelled; process any refund separately"));
+                        .body(Map.of("error", "Only unpaid cash or pending GCash orders can be cancelled"));
             }
-            if (!restoreOrderStock(order)) {
+            if (!orderInventoryService.restoreOrderStock(order)) {
                 return ResponseEntity.status(HttpStatus.CONFLICT)
                         .body(Map.of("error", "This order cannot be cancelled because a deducted inventory batch is missing"));
+            }
+            if (pendingGcashOrder) {
+                order.setPaymentStatus("cancelled");
             }
         }
 
@@ -279,32 +345,6 @@ public class OrderController {
         return ResponseEntity.ok(Map.of("message", "Completed order archived"));
     }
 
-    private boolean restoreOrderStock(Order order) {
-        List<OrderItem> items = orderItemRepository.findByOrderId(order.getId());
-        List<Integer> itemIds = items.stream().map(OrderItem::getId).toList();
-        if (itemIds.isEmpty()) return true;
-
-        List<BatchDeduction> recordedDeductions = batchDeductionRepository.findByOrderItemIdIn(itemIds);
-        if (recordedDeductions.stream().anyMatch(deduction -> deduction.getBatchId() == null)) return false;
-        List<BatchDeduction> deductions = recordedDeductions.stream()
-                .sorted(java.util.Comparator.comparing(BatchDeduction::getBatchId))
-                .toList();
-        Map<Integer, InventoryBatch> batches = new LinkedHashMap<>();
-        for (BatchDeduction deduction : deductions) {
-            if (batches.containsKey(deduction.getBatchId())) continue;
-            InventoryBatch batch = batchRepository.findByIdForUpdate(deduction.getBatchId()).orElse(null);
-            if (batch == null) return false;
-            batches.put(batch.getId(), batch);
-        }
-        for (BatchDeduction deduction : deductions) {
-            InventoryBatch batch = batches.get(deduction.getBatchId());
-            batch.setRemainingQty(batch.getRemainingQty().add(deduction.getDeductedQty()));
-        }
-        for (InventoryBatch batch : batches.values()) {
-            batchRepository.save(batch);
-        }
-        return true;
-    }
 }
 
 class PaymentStatusRequest {
@@ -326,4 +366,14 @@ class DeliveryStatusRequest {
 
     public String getDeliveryStatus() { return deliveryStatus; }
     public void setDeliveryStatus(String deliveryStatus) { this.deliveryStatus = deliveryStatus; }
+}
+
+class GuestDeliveryStatusRequest {
+    private String referenceId;
+    private String customerContact;
+
+    public String getReferenceId() { return referenceId; }
+    public void setReferenceId(String referenceId) { this.referenceId = referenceId; }
+    public String getCustomerContact() { return customerContact; }
+    public void setCustomerContact(String customerContact) { this.customerContact = customerContact; }
 }

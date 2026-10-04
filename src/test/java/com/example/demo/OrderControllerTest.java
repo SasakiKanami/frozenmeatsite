@@ -33,6 +33,7 @@ class OrderControllerTest {
     @Mock private BatchDeductionRepository batchDeductionRepository;
     @Mock private InventoryBatchRepository batchRepository;
     @Mock private ArchivedOrderRepository archivedOrderRepository;
+    @Mock private OrderInventoryService orderInventoryService;
 
     @InjectMocks
     private OrderController controller;
@@ -51,12 +52,47 @@ class OrderControllerTest {
     }
 
     @Test
-    void rejectsStatusesOtherThanPaidOrUnpaid() {
+    void rejectsPaymentStatusesNotValidForCashOrders() {
+        Order order = activeOrder();
+        order.setPaymentMethod("Cash on Pickup / Delivery");
+        when(orderRepository.findByIdForUpdate(12)).thenReturn(Optional.of(order));
         ResponseEntity<?> response = controller.updatePaymentStatus(12, request("pending"));
 
         assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
-        verify(orderRepository, never()).findByIdForUpdate(12);
         verify(orderRepository, never()).save(any(Order.class));
+    }
+
+    @Test
+    void confirmsPendingGcashPayment() {
+        Order order = activeOrder();
+        order.setPaymentMethod("GCash Transfer");
+        order.setPaymentStatus("pending");
+        order.setPaymentDeadlineAt(java.time.LocalDateTime.now().plusHours(1));
+        when(orderRepository.findByIdForUpdate(12)).thenReturn(Optional.of(order));
+
+        ResponseEntity<?> response = controller.updatePaymentStatus(12, request("paid"));
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertEquals("paid", order.getPaymentStatus());
+        verify(orderRepository).save(order);
+    }
+
+    @Test
+    void lateGcashConfirmationCancelsOrderAndRestoresStock() {
+        Order order = activeOrder();
+        order.setPaymentMethod("GCash Transfer");
+        order.setPaymentStatus("pending");
+        order.setPaymentDeadlineAt(java.time.LocalDateTime.now().minusSeconds(1));
+        when(orderRepository.findByIdForUpdate(12)).thenReturn(Optional.of(order));
+        when(orderInventoryService.restoreOrderStock(order)).thenReturn(true);
+
+        ResponseEntity<?> response = controller.updatePaymentStatus(12, request("paid"));
+
+        assertEquals(HttpStatus.CONFLICT, response.getStatusCode());
+        assertEquals("cancelled", order.getPaymentStatus());
+        assertEquals("cancelled", order.getOrderStatus());
+        verify(orderInventoryService).restoreOrderStock(order);
+        verify(orderRepository).save(order);
     }
 
     @Test
@@ -71,6 +107,51 @@ class OrderControllerTest {
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertEquals("Delivery On the Way", order.getDeliveryStatus());
         verify(orderRepository).save(order);
+    }
+
+    @Test
+    void guestCanCheckDeliveryStatusWithReferenceAndContact() {
+        Order order = activeOrder();
+        order.setReferenceId("CF-GUEST-123");
+        order.setCustomerContact("09170000000");
+        order.setFulfillmentMethod("Same-Day Delivery");
+        order.setDeliveryStatus("Delivery On the Way");
+        when(orderRepository.findByReferenceIdAndCustomerContactAndCustomerUserIdIsNull(
+                "CF-GUEST-123", "09170000000")).thenReturn(Optional.of(order));
+        GuestDeliveryStatusRequest request = guestDeliveryStatusRequest(" CF-GUEST-123 ", " 09170000000 ");
+
+        ResponseEntity<?> response = controller.getGuestDeliveryStatus(request);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertEquals("Delivery On the Way", ((Map<?, ?>) response.getBody()).get("deliveryStatus"));
+        verify(orderRepository).findByReferenceIdAndCustomerContactAndCustomerUserIdIsNull(
+                "CF-GUEST-123", "09170000000");
+    }
+
+    @Test
+    void guestStatusLookupHidesUnknownOrders() {
+        when(orderRepository.findByReferenceIdAndCustomerContactAndCustomerUserIdIsNull(
+                "CF-GUEST-123", "09170000000")).thenReturn(Optional.empty());
+
+        ResponseEntity<?> response = controller.getGuestDeliveryStatus(
+                guestDeliveryStatusRequest("CF-GUEST-123", "09170000000"));
+
+        assertEquals(HttpStatus.NOT_FOUND, response.getStatusCode());
+    }
+
+    @Test
+    void guestStatusLookupDoesNotExposePickupOrders() {
+        Order order = activeOrder();
+        order.setReferenceId("CF-GUEST-123");
+        order.setCustomerContact("09170000000");
+        order.setFulfillmentMethod("Storefront Pickup");
+        when(orderRepository.findByReferenceIdAndCustomerContactAndCustomerUserIdIsNull(
+                "CF-GUEST-123", "09170000000")).thenReturn(Optional.of(order));
+
+        ResponseEntity<?> response = controller.getGuestDeliveryStatus(
+                guestDeliveryStatusRequest("CF-GUEST-123", "09170000000"));
+
+        assertEquals(HttpStatus.NOT_FOUND, response.getStatusCode());
     }
 
     @Test
@@ -89,6 +170,21 @@ class OrderControllerTest {
         when(orderRepository.findByIdForUpdate(12)).thenReturn(Optional.of(order));
 
         ResponseEntity<?> response = controller.updateDeliveryStatus(12, deliveryStatusRequest("Delivered"));
+
+        assertEquals(HttpStatus.CONFLICT, response.getStatusCode());
+        verify(orderRepository, never()).save(order);
+    }
+
+    @Test
+    void preventsUnconfirmedGcashOrderFromBeingDispatched() {
+        Order order = activeOrder();
+        order.setPaymentMethod("GCash Transfer");
+        order.setPaymentStatus("pending");
+        order.setFulfillmentMethod("Same-Day Delivery");
+        when(orderRepository.findByIdForUpdate(12)).thenReturn(Optional.of(order));
+
+        ResponseEntity<?> response = controller.updateDeliveryStatus(
+                12, deliveryStatusRequest("Delivery On the Way"));
 
         assertEquals(HttpStatus.CONFLICT, response.getStatusCode());
         verify(orderRepository, never()).save(order);
@@ -134,18 +230,7 @@ class OrderControllerTest {
     void cancellingUnpaidOrderRestoresItsRecordedBatchQuantitiesOnlyOnce() {
         Order order = activeOrder();
         when(orderRepository.findByIdForUpdate(12)).thenReturn(Optional.of(order));
-        OrderItem item = new OrderItem();
-        item.setId(22);
-        when(orderItemRepository.findByOrderId(12)).thenReturn(List.of(item));
-        BatchDeduction deduction = new BatchDeduction();
-        deduction.setBatchId(31);
-        deduction.setOrderItemId(22);
-        deduction.setDeductedQty(new BigDecimal("2.00"));
-        when(batchDeductionRepository.findByOrderItemIdIn(List.of(22))).thenReturn(List.of(deduction));
-        InventoryBatch batch = new InventoryBatch();
-        batch.setId(31);
-        batch.setRemainingQty(new BigDecimal("3.00"));
-        when(batchRepository.findByIdForUpdate(31)).thenReturn(Optional.of(batch));
+        when(orderInventoryService.restoreOrderStock(order)).thenReturn(true);
 
         ResponseEntity<?> first = controller.updateOrderStatus(12, statusRequest("cancelled"));
         ResponseEntity<?> repeated = controller.updateOrderStatus(12, statusRequest("cancelled"));
@@ -153,8 +238,7 @@ class OrderControllerTest {
         assertEquals(HttpStatus.OK, first.getStatusCode());
         assertEquals(HttpStatus.OK, repeated.getStatusCode());
         assertEquals("cancelled", order.getOrderStatus());
-        assertEquals(new BigDecimal("5.00"), batch.getRemainingQty());
-        verify(batchRepository, times(1)).save(batch);
+        verify(orderInventoryService, times(1)).restoreOrderStock(order);
     }
 
     @Test
@@ -166,7 +250,7 @@ class OrderControllerTest {
         ResponseEntity<?> response = controller.updateOrderStatus(12, statusRequest("cancelled"));
 
         assertEquals(HttpStatus.CONFLICT, response.getStatusCode());
-        verify(batchDeductionRepository, never()).findByOrderItemIdIn(any());
+        verify(orderInventoryService, never()).restoreOrderStock(any());
         verify(orderRepository, never()).save(order);
     }
 
@@ -190,6 +274,7 @@ class OrderControllerTest {
     private Order activeOrder() {
         Order order = new Order();
         order.setId(12);
+        order.setPaymentMethod("Cash on Pickup / Delivery");
         order.setPaymentStatus("unpaid");
         order.setOrderStatus("pending");
         return order;
@@ -210,6 +295,13 @@ class OrderControllerTest {
     private DeliveryStatusRequest deliveryStatusRequest(String deliveryStatus) {
         DeliveryStatusRequest request = new DeliveryStatusRequest();
         request.setDeliveryStatus(deliveryStatus);
+        return request;
+    }
+
+    private GuestDeliveryStatusRequest guestDeliveryStatusRequest(String referenceId, String customerContact) {
+        GuestDeliveryStatusRequest request = new GuestDeliveryStatusRequest();
+        request.setReferenceId(referenceId);
+        request.setCustomerContact(customerContact);
         return request;
     }
 }

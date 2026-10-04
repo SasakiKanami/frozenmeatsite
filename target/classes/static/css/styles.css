@@ -105,6 +105,15 @@ body {
     gap: 1.5rem;
 }
 
+#auth-link.customer-logout-link,
+#auth-link.customer-logout-link:hover {
+    background: #b30000;
+    border-color: #b30000;
+    color: #ffffff;
+    box-shadow: none;
+    transform: none;
+}
+
 .nav-link {
     color: #e0f2fe;
     text-decoration: none;
@@ -636,6 +645,38 @@ body {
     border-top: 2px solid rgba(186, 230, 253, 0.8);
 }
 
+.gcash-qr-panel {
+    margin-top: 1.25rem;
+    padding: 1rem;
+    border: 1px solid var(--glass-border-ice);
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.72);
+    text-align: center;
+}
+
+.gcash-qr-heading {
+    color: var(--navy-deep);
+    font-size: 1rem;
+    font-weight: 800;
+}
+
+.gcash-qr-instructions,
+.gcash-reference-help {
+    display: block;
+    margin: 0.4rem 0 0.8rem;
+    color: var(--text-muted);
+    font-size: 0.8rem;
+}
+
+.gcash-qr-image {
+    display: block;
+    width: min(260px, 100%);
+    max-height: 300px;
+    object-fit: contain;
+    margin: 0 auto;
+    border-radius: 8px;
+}
+
 .total-highlight {
     color: var(--ice-glacier-blue);
     font-size: 1.5rem;
@@ -756,6 +797,59 @@ body {
     font-size: 0.95rem;
 }
 
+.delivery-status-badge {
+    display: inline-block;
+    padding: 0.2rem 0.55rem;
+    border-radius: 999px;
+    font-weight: 700;
+}
+
+.delivery-status-badge.delivery-status--preparing {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.delivery-status-badge.delivery-status--on-the-way {
+    background: #dbeafe;
+    color: #1d4ed8;
+}
+
+.delivery-status-badge.delivery-status--delivered {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.payment-status-badge {
+    display: inline-block;
+    padding: 0.2rem 0.55rem;
+    border-radius: 999px;
+    background: #fef3c7;
+    color: #92400e;
+    font-weight: 700;
+}
+
+.payment-status-badge.payment-status--confirmed {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.payment-status-badge.payment-status--cancelled {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.conf-delivery-tracking-note {
+    margin: -1.5rem 0 1.5rem;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+}
+
+.conf-payment-tracking-note {
+    margin: -1.5rem 0 1.5rem;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+}
+
 .ref-code {
     color: var(--ice-glacier-blue);
     font-weight: 900;
@@ -809,12 +903,16 @@ body {
 }
 
 .quantity-dialog {
+    position: fixed;
+    inset: 0;
+    margin: auto;
     border: 1px solid var(--glass-border);
     border-radius: 12px;
     padding: 0;
     background: var(--glass-surface);
     color: var(--text-main);
     box-shadow: 0 18px 60px rgba(7, 19, 34, 0.28);
+    overflow: visible;
 }
 
 .quantity-dialog::backdrop {

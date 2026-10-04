@@ -5,6 +5,7 @@ let cart = JSON.parse(localStorage.getItem('carni_guest_cart')) || [];
 let quantityProduct = null;
 let savedDeliveryFee = 0;
 let savedCustomerProfile = null;
+let guestDeliveryStatusTimeout = null;
 
 function escapeHtml(value) {
     return String(value ?? '').replace(/[&<>"']/g, character => ({
@@ -25,6 +26,11 @@ async function updateAuthLink() {
         const session = await response.json();
         if (!session.authenticated) return;
 
+        const welcomeTitle = document.getElementById('customer-welcome-title');
+        if (welcomeTitle && session.role === 'customer' && session.fullName) {
+            welcomeTitle.textContent = `Welcome, ${session.fullName}!`;
+        }
+
         if (session.role === 'customer') {
             if (ordersLink) ordersLink.classList.remove('hidden');
             if (profileLink) profileLink.classList.remove('hidden');
@@ -36,6 +42,7 @@ async function updateAuthLink() {
 
     link.textContent = 'Logout';
     link.href = '#';
+    link.classList.add('customer-logout-link');
     link.addEventListener('click', async event => {
         event.preventDefault();
         link.setAttribute('aria-disabled', 'true');
@@ -60,6 +67,102 @@ function friendlyCheckoutError(message) {
     const item = match ? cart.find(entry => entry.productId === Number(match[1])) : null;
     return item ? `Not enough stock for ${item.name}. Please lower the quantity and try again.` : text;
 }
+
+function deliveryStatusClass(status) {
+    switch (status) {
+        case 'Delivery On the Way':
+            return 'delivery-status--on-the-way';
+        case 'Delivered':
+            return 'delivery-status--delivered';
+        case 'Order Being Prepared':
+        default:
+            return 'delivery-status--preparing';
+    }
+}
+
+function paymentStatusLabel(status) {
+    return ({
+        pending: 'Payment Pending',
+        paid: 'Payment Confirmed',
+        cancelled: 'Payment Cancelled',
+        unpaid: 'Unpaid',
+        failed: 'Payment Failed'
+    })[String(status || '').toLowerCase()] || status || 'Unpaid';
+}
+
+function paymentStatusClass(status) {
+    if (status === 'paid') return 'payment-status--confirmed';
+    if (status === 'cancelled') return 'payment-status--cancelled';
+    return '';
+}
+
+async function refreshGuestDeliveryStatus(referenceId, customerContact) {
+    try {
+        const response = await fetch('/api/orders/guest-delivery-status', {
+            method: 'POST',
+            headers: csrfHeaders({ 'Content-Type': 'application/json' }),
+            body: JSON.stringify({ referenceId, customerContact })
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(result.error || `Delivery status request failed: ${response.status}`);
+
+        if (result.deliveryStatus) {
+            const statusElement = document.getElementById('conf-delivery-status');
+            statusElement.textContent = result.deliveryStatus;
+            statusElement.className = `delivery-status-badge ${deliveryStatusClass(result.deliveryStatus)}`;
+        }
+        if (result.paymentStatus) {
+            const paymentElement = document.getElementById('conf-payment-status');
+            paymentElement.textContent = paymentStatusLabel(result.paymentStatus);
+            paymentElement.className = `payment-status-badge ${paymentStatusClass(result.paymentStatus)}`;
+        }
+        const trackingNote = document.getElementById('conf-delivery-tracking-note');
+        const paymentNote = document.getElementById('conf-payment-tracking-note');
+        const deliveryPending = result.deliveryStatus && result.deliveryStatus !== 'Delivered'
+            && result.orderStatus !== 'cancelled';
+        const paymentPending = result.paymentStatus === 'pending';
+        if (result.deliveryStatus === 'Delivered') {
+            trackingNote.textContent = 'Your order has been delivered.';
+        }
+        if (result.orderStatus === 'cancelled') {
+            if (result.deliveryStatus) trackingNote.textContent = 'This order was cancelled. Delivery status updates have stopped.';
+            if (result.paymentStatus === 'cancelled') {
+                paymentNote.textContent = 'Payment was not confirmed within 12 hours. The order was cancelled and its stock released.';
+            }
+        }
+        if (result.paymentStatus === 'paid') paymentNote.textContent = 'Your GCash payment has been confirmed.';
+        if (deliveryPending || paymentPending) {
+            guestDeliveryStatusTimeout = window.setTimeout(
+                () => refreshGuestDeliveryStatus(referenceId, customerContact),
+                15000
+            );
+        }
+        return;
+    } catch (error) {
+        console.error('Unable to refresh guest delivery status:', error);
+    }
+
+    guestDeliveryStatusTimeout = window.setTimeout(
+        () => refreshGuestDeliveryStatus(referenceId, customerContact),
+        15000
+    );
+}
+
+function updateGcashCheckoutFields() {
+    const gcashSelected = document.getElementById('paymentMethod')?.value === 'GCash Transfer';
+    const qrPanel = document.getElementById('gcash-qr-panel');
+    const referenceGroup = document.getElementById('gcash-reference-group');
+    const referenceInput = document.getElementById('gcash-reference');
+    qrPanel?.classList.toggle('hidden', !gcashSelected);
+    referenceGroup?.classList.toggle('hidden', !gcashSelected);
+    if (referenceInput) referenceInput.required = gcashSelected;
+}
+
+window.addEventListener('pagehide', () => {
+    if (guestDeliveryStatusTimeout !== null) {
+        window.clearTimeout(guestDeliveryStatusTimeout);
+    }
+});
 
 // 2. Add an item to the guest cart
 function addToCart(name, price, productId, unit) {
@@ -289,6 +392,7 @@ async function handleGuestCheckout(event) {
     const guestEmail = document.getElementById('guestEmail').value.trim();
     const fulfillmentType = document.getElementById('fulfillmentType').value;
     const paymentMethod = document.getElementById('paymentMethod').value;
+    const paymentReference = document.getElementById('gcash-reference').value.trim();
     const deliveryAddress = document.getElementById('deliveryAddress').value.trim();
     const deliveryNotes = document.getElementById('deliveryNotes').value.trim();
     const submitButton = event.currentTarget.querySelector('button[type="submit"]');
@@ -307,6 +411,7 @@ async function handleGuestCheckout(event) {
                     deliveryAddress: deliveryAddress,
                     deliveryNotes: deliveryNotes,
                     paymentMethod: paymentMethod,
+                    paymentReference: paymentReference,
                 },
                 items: cart.map(item => ({
                     productId: item.productId,
@@ -326,13 +431,49 @@ async function handleGuestCheckout(event) {
         document.getElementById('conf-phone').textContent = guestPhone;
         document.getElementById('conf-fulfillment').textContent = fulfillmentType.toUpperCase();
         const deliveryStatusLine = document.getElementById('conf-delivery-status-line');
+        const guestDeliveryOrder = result.guestOrder === true && fulfillmentType === 'Same-Day Delivery';
         if (deliveryStatusLine) {
-            deliveryStatusLine.classList.toggle('hidden', fulfillmentType !== 'Same-Day Delivery');
-            if (fulfillmentType === 'Same-Day Delivery') {
-                document.getElementById('conf-delivery-status').textContent = 'Order Being Prepared';
-            }
+            deliveryStatusLine.classList.toggle('hidden', !guestDeliveryOrder);
+        }
+        const trackingNote = document.getElementById('conf-delivery-tracking-note');
+        if (trackingNote) {
+            trackingNote.classList.toggle('hidden', !guestDeliveryOrder);
+        }
+        if (guestDeliveryOrder) {
+            const statusElement = document.getElementById('conf-delivery-status');
+            statusElement.textContent = 'Order Being Prepared';
+            statusElement.className = 'delivery-status-badge delivery-status--preparing';
+            if (guestDeliveryStatusTimeout !== null) window.clearTimeout(guestDeliveryStatusTimeout);
         }
         document.getElementById('conf-payment').textContent = paymentMethod.toUpperCase();
+        const gcashOrder = paymentMethod === 'GCash Transfer';
+        const paymentReferenceLine = document.getElementById('conf-payment-reference-line');
+        const paymentStatusLine = document.getElementById('conf-payment-status-line');
+        const paymentTrackingNote = document.getElementById('conf-payment-tracking-note');
+        paymentReferenceLine?.classList.toggle('hidden', !gcashOrder);
+        paymentStatusLine?.classList.toggle('hidden', !gcashOrder);
+        paymentTrackingNote?.classList.toggle('hidden', !gcashOrder);
+        if (gcashOrder) {
+            document.getElementById('conf-payment-reference').textContent = paymentReference;
+            const statusElement = document.getElementById('conf-payment-status');
+            statusElement.textContent = paymentStatusLabel(result.paymentStatus);
+            statusElement.className = `payment-status-badge ${paymentStatusClass(result.paymentStatus)}`;
+            if (result.guestOrder === true) {
+                if (guestDeliveryStatusTimeout !== null) window.clearTimeout(guestDeliveryStatusTimeout);
+                guestDeliveryStatusTimeout = window.setTimeout(
+                    () => refreshGuestDeliveryStatus(result.referenceId, guestPhone),
+                    15000
+                );
+            } else {
+                paymentTrackingNote.textContent = 'Payment is due within 12 hours. Check My Orders for staff confirmation.';
+            }
+        } else if (guestDeliveryOrder) {
+            if (guestDeliveryStatusTimeout !== null) window.clearTimeout(guestDeliveryStatusTimeout);
+            guestDeliveryStatusTimeout = window.setTimeout(
+                () => refreshGuestDeliveryStatus(result.referenceId, guestPhone),
+                15000
+            );
+        }
         document.getElementById('conf-delivery-fee').textContent = `₱${Number(result.deliveryFee || 0).toFixed(2)}`;
         document.getElementById('conf-total').textContent = `₱${Number(result.totalAmount).toFixed(2)}`;
 
@@ -407,7 +548,9 @@ document.addEventListener('DOMContentLoaded', () => {
     loadCheckoutSettings();
     loadSavedCustomerProfile();
     document.getElementById('fulfillmentType')?.addEventListener('change', updateDeliveryFields);
+    document.getElementById('paymentMethod')?.addEventListener('change', updateGcashCheckoutFields);
     updateDeliveryFields();
+    updateGcashCheckoutFields();
     document.getElementById('quantity-dialog-close')?.addEventListener('click', closeQuantityDialog);
     document.getElementById('quantity-form')?.addEventListener('submit', event => {
         event.preventDefault();

@@ -118,6 +118,7 @@ public class AuthController {
         }
         return Map.of(
                 "authenticated", true,
+                "fullName", user.getFullName(),
                 "username", user.getUsername(),
                 "role", user.getRole(),
                 "userId", user.getId()

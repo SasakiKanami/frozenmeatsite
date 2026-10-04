@@ -24,6 +24,10 @@ public class Order {
     private BigDecimal deliveryFee;
     private String paymentMethod;
     private String paymentStatus = "unpaid";
+    @Column(name = "payment_reference")
+    private String paymentReference;
+    @Column(name = "payment_deadline_at")
+    private LocalDateTime paymentDeadlineAt;
     private BigDecimal totalAmount;
     private String orderStatus = "pending";
     @Column(name = "delivery_status")
@@ -111,6 +115,10 @@ public class Order {
 
     public String getPaymentStatus() { return paymentStatus; }
     public void setPaymentStatus(String paymentStatus) { this.paymentStatus = paymentStatus; }
+    public String getPaymentReference() { return paymentReference; }
+    public void setPaymentReference(String paymentReference) { this.paymentReference = paymentReference; }
+    public LocalDateTime getPaymentDeadlineAt() { return paymentDeadlineAt; }
+    public void setPaymentDeadlineAt(LocalDateTime paymentDeadlineAt) { this.paymentDeadlineAt = paymentDeadlineAt; }
 
     public BigDecimal getTotalAmount() {
         return totalAmount;

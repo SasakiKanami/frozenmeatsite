@@ -56,6 +56,7 @@ public class SecurityConfiguration {
                                 "/api/auth/password-reset-requests", "/api/auth/password-resets").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/checkout-settings").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/products").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/orders/guest-delivery-status").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/orders").hasAnyRole("ADMIN", "CASHIER")
                         .requestMatchers(HttpMethod.PUT, "/api/orders/*/payment-status",
                                 "/api/orders/*/status", "/api/orders/*/archive",

@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.*;
 import jakarta.annotation.PostConstruct;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -83,8 +84,13 @@ public class CheckoutController {
                 || submittedOrder.getCustomerContact().trim().length() > 30
                 || length(submittedOrder.getCustomerEmail()) > 255
                 || length(submittedOrder.getDeliveryAddress()) > 4000
-                || length(submittedOrder.getDeliveryNotes()) > 2000) {
+                || length(submittedOrder.getDeliveryNotes()) > 2000
+                || length(submittedOrder.getPaymentReference()) > 100) {
             return ResponseEntity.badRequest().body(Map.of("error", "One or more order fields exceed the allowed length"));
+        }
+        boolean gcashPayment = "GCash Transfer".equals(submittedOrder.getPaymentMethod());
+        if (gcashPayment && isBlank(submittedOrder.getPaymentReference())) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Enter the GCash payment reference number"));
         }
         if ("Same-Day Delivery".equals(submittedOrder.getFulfillmentMethod()) && isBlank(submittedOrder.getDeliveryAddress())) {
             return ResponseEntity.badRequest().body(Map.of("error", "A delivery address is required for same-day delivery"));
@@ -166,7 +172,9 @@ public class CheckoutController {
                 : BigDecimal.ZERO.setScale(2);
         order.setDeliveryFee(deliveryFee);
         order.setPaymentMethod(submittedOrder.getPaymentMethod());
-        order.setPaymentStatus("unpaid");
+        order.setPaymentStatus(gcashPayment ? "pending" : "unpaid");
+        order.setPaymentReference(gcashPayment ? submittedOrder.getPaymentReference().trim() : null);
+        order.setPaymentDeadlineAt(gcashPayment ? LocalDateTime.now().plusHours(12) : null);
         order.setOrderStatus("pending");
         if ("Same-Day Delivery".equals(submittedOrder.getFulfillmentMethod())) {
             order.setDeliveryStatus("Order Being Prepared");
@@ -195,13 +203,18 @@ public class CheckoutController {
             }
         }
 
-        return ResponseEntity.ok(Map.of(
-                "message", "Checkout successful",
-                "orderId", savedOrder.getId(),
-                "referenceId", savedOrder.getReferenceId(),
-                "deliveryFee", deliveryFee,
-                "totalAmount", savedOrder.getTotalAmount()
-        ));
+        Map<String, Object> response = new java.util.LinkedHashMap<>();
+        response.put("message", "Checkout successful");
+        response.put("orderId", savedOrder.getId());
+        response.put("referenceId", savedOrder.getReferenceId());
+        response.put("guestOrder", savedOrder.getCustomerUserId() == null);
+        response.put("paymentStatus", savedOrder.getPaymentStatus());
+        if (savedOrder.getPaymentDeadlineAt() != null) {
+            response.put("paymentDeadlineAt", savedOrder.getPaymentDeadlineAt());
+        }
+        response.put("deliveryFee", deliveryFee);
+        response.put("totalAmount", savedOrder.getTotalAmount());
+        return ResponseEntity.ok(response);
     }
 
     private boolean isBlank(String value) {

@@ -2,6 +2,7 @@ package com.example.demo;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -190,6 +191,52 @@ class CheckoutControllerTest {
         assertEquals(new BigDecimal("25.00"), orderCaptor.getValue().getDeliveryFee());
         assertEquals(new BigDecimal("75.00"), orderCaptor.getValue().getTotalAmount());
         assertEquals("Order Being Prepared", orderCaptor.getValue().getDeliveryStatus());
+        assertEquals(true, ((java.util.Map<?, ?>) response.getBody()).get("guestOrder"));
+    }
+
+    @Test
+    void gcashCheckoutRequiresReferenceAndStartsPaymentWindow() {
+        Product product = new Product();
+        product.setId(7);
+        product.setPricePerUnit(new BigDecimal("10.00"));
+        when(productRepository.findById(7)).thenReturn(Optional.of(product));
+        when(batchRepository.findUnexpiredAvailableBatchesForUpdate(7, BigDecimal.ZERO))
+                .thenReturn(List.of(batch(21, "5")));
+        when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> {
+            Order order = invocation.getArgument(0);
+            order.setId(31);
+            return order;
+        });
+        when(orderItemRepository.save(any(OrderItem.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+        when(batchRepository.save(any(InventoryBatch.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        CheckoutRequest request = checkoutRequest();
+        request.getOrder().setPaymentMethod("GCash Transfer");
+        request.getOrder().setPaymentReference("GCASH-REF-123");
+
+        ResponseEntity<?> response = controller.processCheckout(request, null);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        ArgumentCaptor<Order> orderCaptor = ArgumentCaptor.forClass(Order.class);
+        verify(orderRepository).save(orderCaptor.capture());
+        Order savedOrder = orderCaptor.getValue();
+        assertEquals("pending", savedOrder.getPaymentStatus());
+        assertEquals("GCASH-REF-123", savedOrder.getPaymentReference());
+        assertTrue(savedOrder.getPaymentDeadlineAt().isAfter(LocalDateTime.now().plusHours(11)));
+        assertTrue(savedOrder.getPaymentDeadlineAt().isBefore(LocalDateTime.now().plusHours(13)));
+    }
+
+    @Test
+    void gcashCheckoutRejectsMissingPaymentReference() {
+        CheckoutRequest request = checkoutRequest();
+        request.getOrder().setPaymentMethod("GCash Transfer");
+
+        ResponseEntity<?> response = controller.processCheckout(request, null);
+
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+        verify(orderRepository, org.mockito.Mockito.never()).save(any(Order.class));
     }
 
     private InventoryBatch batch(Integer id, String remaining) {

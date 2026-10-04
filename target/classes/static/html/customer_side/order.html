@@ -44,6 +44,11 @@
                     <strong id="cart-total-price" class="total-highlight">₱0.00</strong>
                 </div>
                 <p class="card-sub" id="delivery-fee-preview">Local delivery fee: ₱0.00</p>
+                <div class="gcash-qr-panel hidden" id="gcash-qr-panel">
+                    <h3 class="gcash-qr-heading">Pay with GCash</h3>
+                    <p class="gcash-qr-instructions">Scan this QR code to pay, then enter your GCash transaction reference on the right.</p>
+                    <img class="gcash-qr-image" src="../../assets/pictures/gcash_qr.jpg" alt="J&R Frozen Goods GCash payment QR code">
+                </div>
             </div>
 
             <!-- Right Box: Guest Information -->
@@ -95,6 +100,12 @@
                         </select>
                     </div>
 
+                    <div class="form-group hidden" id="gcash-reference-group">
+                        <label for="gcash-reference" class="form-label">GCash Payment Reference Number *</label>
+                        <input type="text" id="gcash-reference" class="form-input" maxlength="100" autocomplete="off">
+                        <small class="gcash-reference-help">Your order will remain pending until staff verify your payment.</small>
+                    </div>
+
                     <button type="submit" class="btn-submit-order">Confirm Order</button>
                 </form>
             </div>
@@ -116,11 +127,20 @@
                 <div class="receipt-line"><span>Customer:</span> <strong id="conf-name">---</strong></div>
                 <div class="receipt-line"><span>Contact:</span> <span id="conf-phone">---</span></div>
                 <div class="receipt-line"><span>Fulfillment:</span> <span id="conf-fulfillment">---</span></div>
-                <div class="receipt-line hidden" id="conf-delivery-status-line"><span>Delivery status:</span> <span id="conf-delivery-status">---</span></div>
+                <div class="receipt-line hidden" id="conf-delivery-status-line"><span>Delivery status:</span> <span id="conf-delivery-status" class="delivery-status-badge">---</span></div>
                 <div class="receipt-line"><span>Payment:</span> <span id="conf-payment">---</span></div>
+                <div class="receipt-line hidden" id="conf-payment-reference-line"><span>GCash reference:</span> <span id="conf-payment-reference">---</span></div>
+                <div class="receipt-line hidden" id="conf-payment-status-line"><span>Payment status:</span> <span id="conf-payment-status" class="payment-status-badge">---</span></div>
                 <div class="receipt-line"><span>Delivery fee:</span> <span id="conf-delivery-fee">₱0.00</span></div>
                 <div class="receipt-line total-line"><span>Total Due:</span> <strong id="conf-total">₱0.00</strong></div>
             </div>
+
+            <p class="conf-delivery-tracking-note hidden" id="conf-delivery-tracking-note" role="status" aria-live="polite">
+                Keep this page open to follow your delivery status until your order is delivered.
+            </p>
+            <p class="conf-payment-tracking-note hidden" id="conf-payment-tracking-note" role="status" aria-live="polite">
+                GCash payment is due within 12 hours. Keep this page open to see when staff confirm payment.
+            </p>
 
             <div class="receipt-actions">
                 <a href="index.html" class="btn-ice">Return to Cold Catalog</a>

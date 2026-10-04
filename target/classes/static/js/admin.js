@@ -191,13 +191,15 @@ function parseCreatedAt(createdAt) {
 function formatPlaced(createdAt) {
     const date = parseCreatedAt(createdAt);
     if (!date || isNaN(date)) return '—';
-    return date.toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' });
+    const dateText = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    const timeText = date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+    return `${dateText}<br>${timeText}`;
 }
 
 function buildOrderRow(order) {
     const items = (order.items || []).map(item =>
         `${escapeHtml(item.productName)} × ${Number(item.quantity)}${item.unit ? ' ' + escapeHtml(item.unit) : ''}`
-    ).join('<br>');
+    ).join(', ');
 
     const customerLines = [escapeHtml(order.customerContact)];
     if (order.customerEmail) customerLines.push(escapeHtml(order.customerEmail));
@@ -209,27 +211,44 @@ function buildOrderRow(order) {
 
     const originalPaymentStatus = String(order.paymentStatus || 'unpaid');
     const paymentStatus = originalPaymentStatus.toLowerCase();
+    const gcashPayment = order.paymentMethod === 'GCash Transfer';
     const orderStatus = String(order.orderStatus || 'pending').toLowerCase();
     const deliveryStatus = String(order.deliveryStatus || 'Order Being Prepared');
     const legacyStatusOption = ['paid', 'unpaid'].includes(paymentStatus)
         ? ''
         : `<option value="${escapeHtml(paymentStatus)}" selected disabled>${escapeHtml(order.paymentStatus)}</option>`;
-    const row = document.createElement('tr');
-    row.innerHTML = `
-        <td class="ref-pill">${escapeHtml(order.referenceId)}</td>
-        <td>${formatPlaced(order.createdAt)}</td>
-        <td><div class="cell-product-name">${escapeHtml(order.customerName)}</div><div class="order-items-list">${customerLines.join('<br>')}</div></td>
-        <td class="order-items-list">${items || '—'}</td>
-        <td>${fulfillment}</td>
-        <td>${escapeHtml(order.paymentMethod)}${order.orderSource === 'walk_in' ? '<div class="order-items-list">Walk-in POS</div>' : ''}</td>
-        <td>
+    let paymentControl;
+    if (gcashPayment && (paymentStatus === 'cancelled' || orderStatus === 'cancelled')) {
+        paymentControl = '<strong class="gcash-payment-cancelled">Payment Cancelled</strong>';
+    } else if (gcashPayment && paymentStatus === 'paid') {
+        paymentControl = '<strong class="gcash-payment-confirmed">Payment Confirmed</strong>';
+    } else if (gcashPayment) {
+        paymentControl = `
+            <select class="payment-status-select" data-payment-status data-order-id="${escapeHtml(order.id)}" data-current-status="${escapeHtml(paymentStatus)}" aria-label="GCash payment status for ${escapeHtml(order.referenceId)}">
+                <option value="pending" selected>Payment Pending</option>
+                <option value="paid">Payment Confirmed</option>
+            </select>
+            <div class="payment-status-message" role="status" aria-live="polite"></div>
+        `;
+    } else {
+        paymentControl = `
             <select class="payment-status-select" data-payment-status data-order-id="${escapeHtml(order.id)}" data-current-status="${escapeHtml(paymentStatus)}" aria-label="Payment status for ${escapeHtml(order.referenceId)}" ${orderStatus === 'cancelled' ? 'disabled' : ''}>
                 ${legacyStatusOption}
                 <option value="unpaid" ${paymentStatus === 'unpaid' ? 'selected' : ''}>Unpaid</option>
                 <option value="paid" ${paymentStatus === 'paid' ? 'selected' : ''}>Paid</option>
             </select>
             <div class="payment-status-message" role="status" aria-live="polite"></div>
-        </td>
+        `;
+    }
+    const row = document.createElement('tr');
+    row.innerHTML = `
+        <td class="ref-pill order-reference-cell">${escapeHtml(order.referenceId)}</td>
+        <td class="order-placed-cell">${formatPlaced(order.createdAt)}</td>
+        <td class="order-customer-cell"><div class="cell-product-name">${escapeHtml(order.customerName)}</div><div class="order-items-list">${customerLines.join('<br>')}</div></td>
+        <td class="order-items-list order-items-cell">${items || '—'}</td>
+        <td>${fulfillment}</td>
+        <td>${escapeHtml(order.paymentMethod)}${gcashPayment && order.paymentReference ? `<div class="order-items-list">Reference: ${escapeHtml(order.paymentReference)}</div>` : ''}${order.orderSource === 'walk_in' ? '<div class="order-items-list">Walk-in POS</div>' : ''}</td>
+        <td>${paymentControl}</td>
         <td class="stock-qty-value">₱${Number(order.totalAmount).toFixed(2)}</td>
         <td>
             <strong>${escapeHtml(orderStatus)}</strong>
@@ -492,9 +511,28 @@ async function submitPosOrder(event) {
     }
 }
 
+async function logoutAdmin(button) {
+    button.disabled = true;
+    try {
+        const response = await fetch('/api/auth/logout', {
+            method: 'POST',
+            headers: csrfHeaders()
+        });
+        if (!response.ok) throw new Error(`Sign out failed: ${response.status}`);
+        window.location.replace('../login/login.html');
+    } catch (error) {
+        button.disabled = false;
+        console.error('Unable to sign out:', error);
+        alert(error.message || 'Unable to sign out. Please try again.');
+    }
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     updateAdminClock();
     setInterval(updateAdminClock, 1000);
+    document.getElementById('admin-logout-button')?.addEventListener('click', event => {
+        logoutAdmin(event.currentTarget);
+    });
     document.getElementById('inventory-table-body')?.addEventListener('click', event => {
         const target = event.target;
         if (!(target instanceof Element)) return;
